@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using project.Models;
+using project.Excpetions;
 
 namespace project.Services
 {
@@ -12,9 +13,9 @@ namespace project.Services
             return _events;
         }
         
-        public Event? GetEventById(Guid id)
+        public Event GetEventById(Guid id)
         {
-            return _events.FirstOrDefault(e => e.Id == id);
+            return _events.FirstOrDefault(e => e.Id == id)?? throw new EventNotFoundExcpetion(id);
         }
 
         public void CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
@@ -25,29 +26,22 @@ namespace project.Services
                 _events.Add(new Event { Id = Id, Description = Description, StartAt = StartAt, EndAt = EndAt });
             }
         }
-        public bool UpdateEvent(Guid id, EventDto eventDto) 
+        public void UpdateEvent(Guid id, EventDto eventDto) 
         {
             var obj = _events.FirstOrDefault(e => e.Id == id);
-            if (obj is not null)
-            {
-                obj.Title = eventDto.Title;
-                obj.Description = eventDto.Description;
-                obj.StartAt = eventDto.StartAt;
-                obj.EndAt = eventDto.EndAt;
-                return true;
-            }
-            return false;
+            
+            obj.Title = eventDto.Title;
+            obj.Description = eventDto.Description;
+            obj.StartAt = eventDto.StartAt;
+            obj.EndAt = eventDto.EndAt;
+            
+           
         }
 
-        public bool DeleteEvent(Guid id) 
+        public void DeleteEvent(Guid id) 
         {
-            var index = _events.FindIndex(e => e.Id == id);
-            if (index != -1) 
-            {
-                _events.RemoveAt(index);
-                return true;
-            }
-            return false;
+            var obj = GetEventById(id);
+            _events.Remove(obj);
         }
 
     }

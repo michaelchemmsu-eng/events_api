@@ -20,7 +20,7 @@ namespace project.Controllers
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
-            return _eventService.GetAllEvents();
+            return Ok(_eventService.GetAllEvents());
         }
 
 
@@ -35,13 +35,11 @@ namespace project.Controllers
         /// <param name="id">id события</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public ActionResult<Event> GetEventById(Guid id) 
+        public ActionResult<Event> GetEventById(Guid id)
         {
             _logger.LogInformation("Вызов метода GetEventById для события с ID: {EventId}", id);
             var res = _eventService.GetEventById(id);
-            return res is null 
-                ? NotFound($"событие с ID {id} не найдено") 
-                : res;    
+            return Ok(res);
         }
 
 
@@ -67,7 +65,7 @@ namespace project.Controllers
                 (
                     nameof(GetEventById),
                     new { id = newId },
-                    null
+                    _eventService.GetEventById(newId)
                 );
         }
 
@@ -88,11 +86,10 @@ namespace project.Controllers
         [HttpPut("{id}")]
         public IActionResult UpdateEvent(Guid id, [FromBody] EventDto eventDto) 
         {
-            _logger.LogInformation("Вызов метода UpdateEvent для события с ID: {EventId}", id);
-            var res = _eventService.UpdateEvent(id, eventDto);
-            return res 
-                ? Ok(new { message = $"Событие С Id {id} успешно обновлено" }) 
-                : NotFound($"событие с ID {id} не найдено");
+            _logger.LogInformation("Обновление события с ID: {EventId}", id);
+            _eventService.UpdateEvent(id, eventDto);
+            return Ok(new { message = $"Событие С Id {id} успешно обновлено" });
+               
         }
 
 
@@ -111,11 +108,10 @@ namespace project.Controllers
         [HttpDelete("{id}")]
         public IActionResult DeleteEvent(Guid id) 
         {
-            _logger.LogInformation("Вызов метода DeleteEvent для события с ID: {EventId}", id);
-            var res = _eventService.DeleteEvent(id);
-            return res 
-                ? Ok(new { message = $"Событие С Id {id} успешно удалено" }) 
-                : NotFound($"событие с ID {id} не найдено");
+            _logger.LogInformation("Удаление события с ID: {EventId}", id);
+            _eventService.DeleteEvent(id);
+            return Ok(new { message = $"Событие С Id {id} успешно удалено" }); 
+                
         }
 
 

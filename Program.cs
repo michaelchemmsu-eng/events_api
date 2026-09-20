@@ -1,4 +1,5 @@
 
+using project.Excpetions;
 using project.Services;
 using System.Reflection;
 
@@ -11,7 +12,21 @@ namespace project
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddControllers();
             builder.Services.AddScoped<IEventService, EventService>();
-          
+
+            builder.Services.AddProblemDetails(options =>
+            {
+                options.CustomizeProblemDetails = ctx =>
+                {
+                    
+                    if (ctx.Exception is EventNotFoundExcpetion)
+                    {
+                        ctx.ProblemDetails.Status = StatusCodes.Status404NotFound;
+                        ctx.ProblemDetails.Title = "Событие не найдено";
+                        ctx.ProblemDetails.Detail = ctx.Exception.Message;
+                    }
+                };
+            });
+
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(options =>
@@ -23,7 +38,7 @@ namespace project
             });
             var app = builder.Build();
 
-
+            app.UseExceptionHandler();
             app.UseSwagger();
             app.UseSwaggerUI();
             app.UseHttpsRedirection();
