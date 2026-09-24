@@ -13,9 +13,8 @@ RESTful API сервис для управления событиями.
 ### 1. Клонирование репозитория и переход в ветку
 Если репозиторий еще не склонирован:
 ```bash
-git clone https://github.com/michaelchemmsu-eng/events_api.git
+git clone -b sprint-1 https://github.com/michaelchemmsu-eng/events_api.git
 cd events_api
-git checkout sprint-1
 ```
 
 ### 2. Сборка проекта
@@ -25,17 +24,8 @@ dotnet build
 ```
 
 ### 3. Запуск проекта
-Выполните запуск (выберите **один** из вариантов):
 
-**Вариант А (из корневой папки):**
 ```bash
-dotnet run --project events_api
-```
-*(замените `events_api` на точное имя папки с файлом `Program.cs`, если оно отличается)*
-
-**Вариант Б (перейти в папку проекта):**
-```bash
-cd events_api
 dotnet run
 ```
 

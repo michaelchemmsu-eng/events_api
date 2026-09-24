@@ -16,7 +16,7 @@ namespace project.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public ActionResult<List<Event>> GetAllEvents() 
+        public ActionResult<IReadOnlyList<Event>> GetAllEvents() 
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
@@ -35,10 +35,14 @@ namespace project.Controllers
         /// <param name="id">id события</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public ActionResult<Event> GetEventById(Guid id)
+        public ActionResult<Event?> GetEventById(Guid id)
         {
             _logger.LogInformation("Вызов метода GetEventById для события с ID: {EventId}", id);
             var res = _eventService.GetEventById(id);
+            if (res == null)
+            {
+                return NotFound(new { message = $"Событие с Id {id} не найдено" });
+            }
             return Ok(res);
         }
 
@@ -60,7 +64,11 @@ namespace project.Controllers
         {
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
             var newId = Guid.NewGuid();
-            _eventService.CreateEvent(newId, eventDto.Title, eventDto.Description, eventDto.StartAt, eventDto.EndAt);
+            var isCreated = _eventService.CreateEvent(newId, eventDto.Title, eventDto.Description, eventDto.StartAt, eventDto.EndAt);
+            if (!isCreated)
+            {
+                return Conflict(new { message = $"Событие с Id {newId} уже существует" });
+            }
             return CreatedAtAction
                 (
                     nameof(GetEventById),
@@ -87,7 +95,11 @@ namespace project.Controllers
         public IActionResult UpdateEvent(Guid id, [FromBody] EventDto eventDto) 
         {
             _logger.LogInformation("Обновление события с ID: {EventId}", id);
-            _eventService.UpdateEvent(id, eventDto);
+            var isUpdated = _eventService.UpdateEvent(id, eventDto);
+            if (!isUpdated)
+            {
+                return NotFound(new { message = $"Событие с Id {id} не найдено" });
+            }
             return Ok(new { message = $"Событие С Id {id} успешно обновлено" });
                
         }
@@ -109,7 +121,11 @@ namespace project.Controllers
         public IActionResult DeleteEvent(Guid id) 
         {
             _logger.LogInformation("Удаление события с ID: {EventId}", id);
-            _eventService.DeleteEvent(id);
+            var isDeleted = _eventService.DeleteEvent(id);
+            if (!isDeleted)
+            {
+                return NotFound(new { message = $"Событие с Id {id} не найдено" });
+            }
             return Ok(new { message = $"Событие С Id {id} успешно удалено" }); 
                 
         }

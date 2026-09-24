@@ -1,47 +1,56 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using project.Models;
 using project.Excpetions;
+using System.Collections.Concurrent;
+using System.Reflection.Metadata.Ecma335;
 
 namespace project.Services
 {
     public class EventService:IEventService
     {
-        private List<Event> _events = new();
+        private ConcurrentDictionary<Guid,Event> _events = new();
 
-        public List<Event> GetAllEvents()
+        public IReadOnlyList<Event> GetAllEvents()
         {
-            return _events;
+            return _events.Values.ToList();
         }
         
-        public Event GetEventById(Guid id)
+        public Event? GetEventById(Guid id)
         {
-            return _events.FirstOrDefault(e => e.Id == id)?? throw new EventNotFoundExcpetion(id);
+            return _events.TryGetValue(id, out Event retVal) ? retVal: null;
         }
 
-        public void CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
+        public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
         {
-            var obj = _events.FirstOrDefault(e => e.Id == Id);
-            if (obj is not null) 
+            if (_events.TryGetValue(Id, out _))
             {
-                _events.Add(new Event { Id = Id, Description = Description, StartAt = StartAt, EndAt = EndAt });
+                return false;
             }
+            _events[Id] = new Event { Id = Id, Title = title, Description = Description, StartAt = StartAt, EndAt = EndAt };
+            return true;
         }
-        public void UpdateEvent(Guid id, EventDto eventDto) 
+        public bool UpdateEvent(Guid id, EventDto eventDto) 
         {
-            var obj = _events.FirstOrDefault(e => e.Id == id);
-            
+            var obj = GetEventById(id);
+            if (obj == null)
+            {
+               return false;
+            }
             obj.Title = eventDto.Title;
             obj.Description = eventDto.Description;
             obj.StartAt = eventDto.StartAt;
             obj.EndAt = eventDto.EndAt;
-            
-           
+            return true;
+
         }
 
-        public void DeleteEvent(Guid id) 
+        public bool DeleteEvent(Guid id) 
         {
-            var obj = GetEventById(id);
-            _events.Remove(obj);
+            if (!_events.TryRemove(id, out Event obj))
+            {
+                return false;
+            }
+            return true;
         }
 
     }
