@@ -4,7 +4,7 @@ namespace project.Services
     public interface IEventService
     {
         //получить список всех событий
-        IReadOnlyList<Event> GetAllEvents();
+        IReadOnlyList<Event> GetAllEvents(string? title, DateTime? from, DateTime? to);
         //получить событие по id;
         Event? GetEventById(Guid id);
         //создать событие

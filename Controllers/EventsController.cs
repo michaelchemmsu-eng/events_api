@@ -15,12 +15,18 @@ namespace project.Controllers
         /// Получить список всех событий
         /// </summary>
         /// <returns></returns>
+        /// <param name="title">опциональный, регистронезависимый, поиск по названию</param>
+        /// <param name="from">опциональный. События, которые начинаются не раньше указанной даты</param>
+        /// <param name="to">опциональный. События, которые заканчиваются не позже указанной даты</param>
         [HttpGet]
-        public ActionResult<IReadOnlyList<Event>> GetAllEvents() 
+        public ActionResult<IReadOnlyList<Event>> GetAllEvents(
+            [FromQuery] string? title,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to) 
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
-            return Ok(_eventService.GetAllEvents());
+            return Ok(_eventService.GetAllEvents(title, from, to));
         }
 
 

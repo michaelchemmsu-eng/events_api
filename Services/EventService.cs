@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
-using project.Models;
+using Microsoft.AspNetCore.Mvc;
 using project.Excpetions;
+using project.Models;
 using System.Collections.Concurrent;
 using System.Reflection.Metadata.Ecma335;
 
@@ -10,9 +11,28 @@ namespace project.Services
     {
         private ConcurrentDictionary<Guid,Event> _events = new();
 
-        public IReadOnlyList<Event> GetAllEvents()
+        public IReadOnlyList<Event> GetAllEvents(
+            string? title,
+            DateTime? from,
+            DateTime? to)
         {
-            return _events.Values.ToList();
+            var query = _events.Values.AsEnumerable();
+
+            //фильтруем по title
+            if (!string.IsNullOrEmpty(title))
+            {
+                query = query.Where(e => e.Title == title);
+            }
+            if (from.HasValue) 
+            {
+                query = query.Where(e => e.StartAt >= from.Value);
+            }
+            if (to.HasValue) 
+            {
+                query = query.Where(e => e.EndAt <= to.Value);
+            }
+            return query.ToList();
+            
         }
         
         public Event? GetEventById(Guid id)
@@ -34,7 +54,7 @@ namespace project.Services
         {
             var newEvent = new Event
             {
-                Id = new Guid(),
+                Id = Guid.NewGuid(),
                 Title = eventDto.Title,
                 Description = eventDto.Description,
                 StartAt = eventDto.StartAt,
