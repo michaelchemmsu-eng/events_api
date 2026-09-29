@@ -8,7 +8,9 @@ namespace project.Services
         //получить событие по id;
         Event? GetEventById(Guid id);
         //создать событие
-        bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt);
+        //bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt);
+        Event CreateEvent(EventDto eventDto);
+
         // обновить событие целиком;
         bool UpdateEvent(Guid id, EventDto eventDto);
         // удалить событие;

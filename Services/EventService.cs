@@ -17,40 +17,66 @@ namespace project.Services
         
         public Event? GetEventById(Guid id)
         {
-            return _events.TryGetValue(id, out Event retVal) ? retVal: null;
+            return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
         }
 
-        public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
+        //public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
+        //{
+        //    if (_events.TryGetValue(Id, out _))
+        //    {
+        //        return false;
+        //    }
+        //    _events[Id] = new Event { Id = Id, Title = title, Description = Description, StartAt = StartAt, EndAt = EndAt };
+        //    return true;
+        //}
+
+        public Event CreateEvent(EventDto eventDto) 
         {
-            if (_events.TryGetValue(Id, out _))
+            var newEvent = new Event
             {
-                return false;
-            }
-            _events[Id] = new Event { Id = Id, Title = title, Description = Description, StartAt = StartAt, EndAt = EndAt };
-            return true;
+                Id = new Guid(),
+                Title = eventDto.Title,
+                Description = eventDto.Description,
+                StartAt = eventDto.StartAt,
+                EndAt = eventDto.EndAt
+            };
+            _events[newEvent.Id] = newEvent;
+            return newEvent;
         }
+
+
         public bool UpdateEvent(Guid id, EventDto eventDto) 
         {
-            var obj = GetEventById(id);
-            if (obj == null)
+            
+            var updatedEvent = new Event 
             {
-               return false;
+                Id = id,
+                Title = eventDto.Title,
+                Description = eventDto.Description,
+                StartAt = eventDto.StartAt,
+                EndAt = eventDto.EndAt
+            };
+            while (true) 
+            {
+                if (!_events.TryGetValue(id,out Event? existingEvent))
+                {
+                    return false;
+                }
+                // Атомарная замена
+                // Если за время замены другой поток успел его заменить, 
+                // TryUpdate вернет false, и цикл повторится со свежим existingEvent
+                if (_events.TryUpdate(id, updatedEvent, existingEvent))
+                {
+                    return true;
+                }
             }
-            obj.Title = eventDto.Title;
-            obj.Description = eventDto.Description;
-            obj.StartAt = eventDto.StartAt;
-            obj.EndAt = eventDto.EndAt;
-            return true;
-
+           
         }
 
         public bool DeleteEvent(Guid id) 
         {
-            if (!_events.TryRemove(id, out Event obj))
-            {
-                return false;
-            }
-            return true;
+            return _events.TryRemove(id, out Event? obj); 
+            
         }
 
     }

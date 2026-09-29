@@ -63,17 +63,17 @@ namespace project.Controllers
         public ActionResult<Event> CreateEvent([FromBody] EventDto eventDto) 
         {
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
-            var newId = Guid.NewGuid();
-            var isCreated = _eventService.CreateEvent(newId, eventDto.Title, eventDto.Description, eventDto.StartAt, eventDto.EndAt);
-            if (!isCreated)
-            {
-                return Conflict(new { message = $"Событие с Id {newId} уже существует" });
-            }
+            //var newId = Guid.NewGuid();
+            var newEvent = _eventService.CreateEvent(eventDto);
+            //if (!isCreated)
+            //{
+            //    return Conflict(new { message = $"Событие с Id {newId} уже существует" });
+            //}
             return CreatedAtAction
                 (
                     nameof(GetEventById),
-                    new { id = newId },
-                    _eventService.GetEventById(newId)
+                    new { id = newEvent.Id},
+                    newEvent
                 );
         }
 
