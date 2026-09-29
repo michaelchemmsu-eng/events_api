@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using project.Excpetions;
 using project.Services;
 using System.Reflection;
+using project.Middlewares;
 
 namespace project
 {
@@ -14,7 +15,7 @@ namespace project
             builder.Services.AddControllers();
             builder.Services.AddSingleton<IEventService, EventService>();
 
-            builder.Services.AddProblemDetails();
+            builder.Services.AddProblemDetails(); //IProblemDetailsService
             //builder.Services.AddProblemDetails(options =>
             //{
             //    options.CustomizeProblemDetails = ctx =>
@@ -61,7 +62,8 @@ namespace project
 
             var app = builder.Build();
 
-            app.UseExceptionHandler();
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
+            //app.UseExceptionHandler();
             app.UseSwagger();
             app.UseSwaggerUI();
             app.UseHttpsRedirection();
