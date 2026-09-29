@@ -11,12 +11,17 @@ namespace project.Services
     {
         private ConcurrentDictionary<Guid,Event> _events = new();
 
-        public IReadOnlyList<Event> GetAllEvents(
+        public PaginatedResult GetAllEvents(
             string? title,
             DateTime? from,
-            DateTime? to)
+            DateTime? to,
+            int page = 1,
+            int pageSize = 10
+            )
         {
             var query = _events.Values.AsEnumerable();
+
+           
 
             //фильтруем по title
             if (!string.IsNullOrEmpty(title))
@@ -31,13 +36,25 @@ namespace project.Services
             {
                 query = query.Where(e => e.EndAt <= to.Value);
             }
-            return query.ToList();
+            //return query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            return new PaginatedResult
+            {
+                totalEvents = query.Count(),
+                eventArray = query.Skip((page - 1) * pageSize).Take(pageSize).ToArray(),
+                currentPage = page,
+                pageSizeOfCurrentPage = query.Skip((page - 1) * pageSize).Take(pageSize).Count()
+            };
             
         }
         
-        public Event? GetEventById(Guid id)
+        public Event GetEventById(Guid id)
         {
-            return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
+            //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
+            if (!_events.TryGetValue(id, out var retVal))
+            {
+                throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
+            }
+            return retVal;
         }
 
         //public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
@@ -65,7 +82,7 @@ namespace project.Services
         }
 
 
-        public bool UpdateEvent(Guid id, EventDto eventDto) 
+        public void UpdateEvent(Guid id, EventDto eventDto) 
         {
             
             var updatedEvent = new Event 
@@ -80,23 +97,25 @@ namespace project.Services
             {
                 if (!_events.TryGetValue(id,out Event? existingEvent))
                 {
-                    return false;
+                    throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
                 }
                 // Атомарная замена
                 // Если за время замены другой поток успел его заменить, 
                 // TryUpdate вернет false, и цикл повторится со свежим existingEvent
                 if (_events.TryUpdate(id, updatedEvent, existingEvent))
                 {
-                    return true;
+                    return;
                 }
             }
            
         }
 
-        public bool DeleteEvent(Guid id) 
+        public void DeleteEvent(Guid id) 
         {
-            return _events.TryRemove(id, out Event? obj); 
-            
+            if (!_events.TryRemove(id, out Event? obj))
+            {
+                throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
+            }
         }
 
     }

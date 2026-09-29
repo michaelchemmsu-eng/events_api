@@ -18,15 +18,19 @@ namespace project.Controllers
         /// <param name="title">опциональный, регистронезависимый, поиск по названию</param>
         /// <param name="from">опциональный. События, которые начинаются не раньше указанной даты</param>
         /// <param name="to">опциональный. События, которые заканчиваются не позже указанной даты</param>
+        /// <param name="page">опциональный. Номер страницы, 1 по умолчанию</param>
+        /// <param name="pageSize">опциональный. Размер страницы, 10 по умолчанию</param>
         [HttpGet]
-        public ActionResult<IReadOnlyList<Event>> GetAllEvents(
+        public ActionResult<PaginatedResult> GetAllEvents(
             [FromQuery] string? title,
             [FromQuery] DateTime? from,
-            [FromQuery] DateTime? to) 
+            [FromQuery] DateTime? to,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10) 
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
-            return Ok(_eventService.GetAllEvents(title, from, to));
+            return Ok(_eventService.GetAllEvents(title, from, to, page, pageSize));
         }
 
 
@@ -41,14 +45,14 @@ namespace project.Controllers
         /// <param name="id">id события</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public ActionResult<Event?> GetEventById(Guid id)
+        public ActionResult<Event> GetEventById(Guid id)
         {
             _logger.LogInformation("Вызов метода GetEventById для события с ID: {EventId}", id);
-            var res = _eventService.GetEventById(id);
-            if (res == null)
-            {
-                return NotFound(new { message = $"Событие с Id {id} не найдено" });
-            }
+            var res = _eventService.GetEventById(id);//бросит exception, если не найдено событие с таким id
+            //if (res == null)
+            //{
+            //    return NotFound(new { message = $"Событие с Id {id} не найдено" });
+            //}
             return Ok(res);
         }
 
@@ -101,11 +105,7 @@ namespace project.Controllers
         public IActionResult UpdateEvent(Guid id, [FromBody] EventDto eventDto) 
         {
             _logger.LogInformation("Обновление события с ID: {EventId}", id);
-            var isUpdated = _eventService.UpdateEvent(id, eventDto);
-            if (!isUpdated)
-            {
-                return NotFound(new { message = $"Событие с Id {id} не найдено" });
-            }
+            _eventService.UpdateEvent(id, eventDto);//бросит exception, если не найдено событие с таким id
             return Ok(new { message = $"Событие С Id {id} успешно обновлено" });
                
         }
@@ -127,11 +127,7 @@ namespace project.Controllers
         public IActionResult DeleteEvent(Guid id) 
         {
             _logger.LogInformation("Удаление события с ID: {EventId}", id);
-            var isDeleted = _eventService.DeleteEvent(id);
-            if (!isDeleted)
-            {
-                return NotFound(new { message = $"Событие с Id {id} не найдено" });
-            }
+            _eventService.DeleteEvent(id); // бросит exception, если не найдено событие с таким id
             return Ok(new { message = $"Событие С Id {id} успешно удалено" }); 
                 
         }

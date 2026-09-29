@@ -4,17 +4,17 @@ namespace project.Services
     public interface IEventService
     {
         //получить список всех событий
-        IReadOnlyList<Event> GetAllEvents(string? title, DateTime? from, DateTime? to);
+        PaginatedResult GetAllEvents(string? title, DateTime? from, DateTime? to, int page = 1, int pageSize = 10);
         //получить событие по id;
-        Event? GetEventById(Guid id);
+        Event GetEventById(Guid id);
         //создать событие
         //bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt);
         Event CreateEvent(EventDto eventDto);
 
         // обновить событие целиком;
-        bool UpdateEvent(Guid id, EventDto eventDto);
+        void UpdateEvent(Guid id, EventDto eventDto);
         // удалить событие;
-        bool DeleteEvent(Guid id);
+        void DeleteEvent(Guid id);
 
     }
 }
