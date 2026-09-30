@@ -30,7 +30,7 @@ dotnet test
 ### 4. Запуск проекта
 
 ```bash
-dotnet run
+dotnet run --project project
 ```
 
 ---
