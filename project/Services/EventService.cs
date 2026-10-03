@@ -22,11 +22,12 @@ namespace project.Services
             var query = _events.Values.AsEnumerable();
 
            
-
+            
             //фильтруем по title
             if (!string.IsNullOrEmpty(title))
             {
-                query = query.Where(e => e.Title == title);
+                // регистронезависимый поиск подстроки в заголовке
+                query = query.Where(e => e.Title.Contains(title,StringComparison.OrdinalIgnoreCase));
             }
             if (from.HasValue) 
             {

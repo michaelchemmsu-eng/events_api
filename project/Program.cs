@@ -1,7 +1,6 @@
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using project.Excpetions;
 using project.Middlewares;
 using project.Services;
 using System.Reflection;
