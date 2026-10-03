@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
-using project.Models;
+﻿using project.Models;
+using project.Services;
+using System.ComponentModel.DataAnnotations;
 using Xunit;
 
 namespace TestProject1
@@ -597,6 +598,28 @@ namespace TestProject1
             var validationContext = new ValidationContext(eventDtoIncorret);
             var validationResults = eventDtoIncorret.Validate(validationContext).ToList();
             Assert.Contains(nameof(eventDtoIncorret.EndAt), validationResults[0].MemberNames);
+        }
+
+
+
+        //тесты на некорректные значения page и pageSize в GetAllEvents
+        [Theory]
+        [InlineData(0, 10)]
+        [InlineData(-1, 10)]
+        public void GetAllEvents_InvalidPage_ThrowsArgumentOutOfRangeException(int badPage, int pageSize)
+        {
+            var service = new EventService();
+            Assert.Throws<ArgumentOutOfRangeException>(() => service.GetAllEvents(null, null, null, badPage, pageSize));
+        }
+
+        [Theory]
+        [InlineData(1, 0)]
+        [InlineData(1, -5)]
+        [InlineData(1, 101)]
+        public void GetAllEvents_InvalidPageSize_ThrowsArgumentOutOfRangeException(int page, int badPageSize)
+        {
+            var service = new EventService();
+            Assert.Throws<ArgumentOutOfRangeException>(() => service.GetAllEvents(null, null, null, page, badPageSize));
         }
 
     }

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
-using project.Excpetions;
 using project.Models;
 using System.Collections.Concurrent;
 using System.Reflection.Metadata.Ecma335;
@@ -19,6 +18,15 @@ namespace project.Services
             int pageSize = 10
             )
         {
+            if (page < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
+            }
+            if (pageSize < 1 || pageSize > 100)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
+            }
+
             var query = _events.Values.AsEnumerable();
 
            
