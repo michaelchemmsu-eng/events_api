@@ -45,8 +45,11 @@ namespace project.Services
             {
                 query = query.Where(e => e.EndAt <= to.Value);
             }
+            var filteredEvents = query.ToList();
+            int totalCount = filteredEvents.Count;
 
-            var pagedEvents = query
+
+            var pagedEvents = filteredEvents
                         .OrderBy(e => e.StartAt)//для тестирования сортируем по StartAt, так как ConcurrentDictionary не гарантирует порядок элементов. В тесте ожидаемые элементы хранятся в List.
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
@@ -54,7 +57,7 @@ namespace project.Services
 
             return new PaginatedResult
             {
-                totalEvents = query.Count(),
+                totalEvents = totalCount,
                 eventArray = pagedEvents,
                 currentPage = page,
                 pageSizeOfCurrentPage = pagedEvents.Length
