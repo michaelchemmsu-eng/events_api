@@ -15,7 +15,7 @@ namespace TestProject1
 
 
         [Fact]
-        //тест: создание события; фильтрация по названию; фильтрация по датам (startDate, endDate);
+        //тест: создание события
         //Метод_Состояние_ОжидаемыйРезультат
         public void CreateEvent_Event()
         {
@@ -48,9 +48,29 @@ namespace TestProject1
             Assert.Equal(res.Id, eventFromService.Id);
 
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         [Fact]
         //тест: получение всех событий;
-        public void GetAllEvents_PaginatedResult()
+        public void GetAllEvents_PaginatedResultNotFiltered()
         {
             //Arrange
             //индексы i: Title{i}, Description{i} для генерирования объектов EventDto
@@ -94,36 +114,146 @@ namespace TestProject1
             Assert.Equal(expectedPage, currentPage);
             Assert.Equal(expectedPageSize, pageSizeOfCurrentPage);
 
-            //тест: проверка фильтрации по title
+            
+
+        }
+
+
+
+
+
+
+
+        [Fact]
+        //тест: получение всех событий с фильтрацией по названию;
+        public void GetAllEvents_PaginatedResultFilteredByTitle()
+        {
+            //случай пустого Storage
             //Arrange
             string titleFilter = "Title1";
 
             //Act
+            var paginatedResult = _eventService.GetAllEvents(titleFilter,null,null);
+            var actualTotalEvents = paginatedResult.totalEvents;
+            var actualEventArray = paginatedResult.eventArray;
+            var actualCurrentPage = paginatedResult.currentPage;
+            var actualPageSizeOfCurrentPage = paginatedResult.pageSizeOfCurrentPage;
+            //Assert
+            Assert.Equal(0, actualTotalEvents);
+            Assert.Equal(0, actualEventArray.Length);
+            Assert.Equal(1, actualCurrentPage);
+            Assert.Equal(0, actualPageSizeOfCurrentPage);
+
+
+
+
+            //случай непустого Storage
+            //Arrange
+            //индексы i: Title{i}, Description{i} для генерирования объектов EventDto
+            int[] subscripts = {
+                1, 1, 1, 1,
+                2, 2, 2,
+                3, 3,
+                4};
+            int numberOfEvents = subscripts.Length;//число объектов Event to generate
+            //создание и наполнение словаря объектами Event 
+            for (int i = 0; i < numberOfEvents; i++)
+            {
+                EventDto eventDto = new EventDto
+                {
+                    Title = $"Title{subscripts[i]}",
+                    Description = $"Description{subscripts[i]}",
+                    StartAt = DateTime.Now.AddDays(-i),
+                    EndAt = DateTime.Now
+                };
+                _eventService.CreateEvent(eventDto);
+            }
+
+            //Act
+            //тест: проверка при "пустых" аргументах 
+            int expectedPage = 1;
+            int expectedPageSize = 10;
+
+            //тест: проверка фильтрации по title
+            //Arrange
+
+
+            //Act
             var filteredResult = _eventService.GetAllEvents(titleFilter, null, null, expectedPage, expectedPageSize).eventArray;
-            //var expectedFilteredResult = _eventService
-            //    .GetAllEvents(null, null, null, expectedPage, expectedPageSize)
-            //    .eventArray.Where(e => e.Title == titleFilter).ToArray();
+
             //Assert
             Assert.All(filteredResult, e => Assert.Equal(titleFilter, e.Title));
 
 
-            //Act
-            //тест: проверка фильтрации по from
-            filteredResult = _eventService.GetAllEvents(null, DateTime.Now.AddDays(-5), null, expectedPage, expectedPageSize).eventArray;
-            //Assert
-            Assert.All(filteredResult, e => Assert.True(e.StartAt >= DateTime.Now.AddDays(-5)));
-
-            //Act
-            //тест: проверка фильтрации по to
-            filteredResult = _eventService.GetAllEvents(null, null, DateTime.Now.AddDays(-5), expectedPage, expectedPageSize).eventArray;
-            //Assert
-            Assert.All(filteredResult, e => Assert.True(e.EndAt <= DateTime.Now.AddDays(-5)));
-
         }
+
+
+
+
+
+
+        //тест: получение всех событий с фильтрацией по from и to;
+        [Fact]
+        public void GetAllEvents_PaginatedResultFilteredByFromAndTo()
+        {
+            //случай пустого Storage
+            DateTime fromFilter = DateTime.Now.AddDays(-5);
+            DateTime toFilter = DateTime.Now.AddDays(-1);
+            var paginatedResult = _eventService.GetAllEvents(null, fromFilter, toFilter);
+            var actualTotalEvents = paginatedResult.totalEvents;
+            var actualEventArray = paginatedResult.eventArray;
+            var actualCurrentPage = paginatedResult.currentPage;
+            var actualPageSizeOfCurrentPage = paginatedResult.pageSizeOfCurrentPage;
+            //Assert
+            Assert.Equal(0, actualTotalEvents);
+            Assert.Equal(0, actualEventArray.Length);
+            Assert.Equal(1, actualCurrentPage);
+            Assert.Equal(0, actualPageSizeOfCurrentPage);
+
+            //слуйчай непустного storage
+            //Arrange
+            //так же, как и выше
+            int[] subscripts = {
+                1, 1, 1, 1,
+                2, 2, 2,
+                3, 3,
+                4};
+            int numberOfEvents = subscripts.Length;
+            for (int i = 0; i < numberOfEvents; i++)
+            {
+                EventDto eventDto = new EventDto
+                {
+                    Title = $"Title{subscripts[i]}",
+                    Description = $"Description{subscripts[i]}",
+                    StartAt = DateTime.Now.AddDays(-i),
+                    EndAt = DateTime.Now
+                };
+                _eventService.CreateEvent(eventDto);
+            }
+            //Act
+            //тест: проверка фильтрации по from и to
+            var filteredResult = _eventService.GetAllEvents(null, fromFilter, toFilter).eventArray;
+            //Assert
+            Assert.All(filteredResult, e => Assert.True(e.StartAt >= fromFilter));
+            Assert.All(filteredResult, e => Assert.True(e.EndAt <= toFilter));
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         [Fact]
         //тест: получение события по id;
-        //попытка получить событие с несуществующим ID;
+
         public void GetEventById_Id_Event()
         {
             //Arrange
@@ -158,17 +288,47 @@ namespace TestProject1
             Assert.Equal(expectedEventFromStorage.StartAt, actualEventFromStorage.StartAt);
             Assert.Equal(expectedEventFromStorage.EndAt, actualEventFromStorage.EndAt);
 
+        }
 
+
+        [Fact]
+        //тест: получение события по несуществующему id;
+        public void GetEventById_NonExistingId_ThrowsKeyNotFoundException()
+        {
+            //случай с пустым Storage
+            // Arrange
+            Guid nonexistingId = Guid.NewGuid(); // Generate a new GUID that is not in the storage
+            // Act and Assert
+            Assert.Throws<KeyNotFoundException>(() => _eventService.GetEventById(nonexistingId));
+
+
+            //случай с непустым Storage
             //Arrange
-            Guid nonexistingId = new Guid();
-            //Act and Assert
+            int[] subscripts = {
+                1, 1, 1, 1,
+                2, 2, 2,
+                3, 3,
+                4};
+            int numberOfEvents = subscripts.Length;
+            for (int i = 0; i < numberOfEvents; i++)
+            {
+                EventDto eventDto = new EventDto
+                {
+                    Title = $"Title{subscripts[i]}",
+                    Description = $"Description{subscripts[i]}",
+                    StartAt = DateTime.Now.AddDays(-i),
+                    EndAt = DateTime.Now
+                };
+                _eventService.CreateEvent(eventDto);
+            }
+            // Act and Assert
             Assert.Throws<KeyNotFoundException>(() => _eventService.GetEventById(nonexistingId));
 
         }
 
+
         [Fact]
         //обновление существующего события;
-        //попытка обновить событие с несуществующим ID;
         public void UpdateEvent_IdAndEventDto_()
         {
             //обновлят Event асинхронно
@@ -195,7 +355,6 @@ namespace TestProject1
 
 
 
-            Guid nonexistingId = new Guid(); //to check the exception throwing
             var Ids = _eventService.GetAllEvents(null, null, null).eventArray.Select(e => e.Id).ToArray();//массив Id элементов 
             int idxOfEventToModify = 0;//index of the element in the Array to modify
             //EventDto for modification of the element of idxOfEventToModify
@@ -223,10 +382,51 @@ namespace TestProject1
             Assert.Equal(modifiedEvent.Description, eventDtoToModify.Description);
             Assert.Equal(modifiedEvent.EndAt, eventDtoToModify.EndAt);
 
-            //Act. Update an nonexisting Event
-            //Act and Assert
+
+        }
+
+
+
+        //обновление события с несуществующим ID
+        [Fact]
+        public void UpdateEventById_NonExistingId_ThrowsKeyNotFoundException() 
+        {
+            //случай с пустым Storage
+            Guid nonexistingId = new Guid(); //to check the exception throwing
+            //EventDto for modification of the element of idxOfEventToModify
+            EventDto eventDtoToModify = new EventDto
+            {
+                Title = "Title123",
+                Description = "Description123",
+                StartAt = DateTime.Now.AddDays(-10),
+                EndAt = DateTime.Now
+            };
+
+       
             Assert.Throws<KeyNotFoundException>(() => _eventService.UpdateEvent(nonexistingId, eventDtoToModify));
 
+
+
+            //случай с непустым Storage
+            int[] subscripts = {
+                1, 1, 1, 1,
+                2, 2, 2,
+                3, 3,
+                4};
+            int numberOfEvents = subscripts.Length;
+            for (int i = 0; i < numberOfEvents; i++)
+            {
+                EventDto eventDto = new EventDto
+                {
+                    Title = $"Title{subscripts[i]}",
+                    Description = $"Description{subscripts[i]}",
+                    StartAt = DateTime.Now.AddDays(-i),
+                    EndAt = DateTime.Now
+                };
+                _eventService.CreateEvent(eventDto);
+            }
+            
+            Assert.Throws<KeyNotFoundException>(() => _eventService.UpdateEvent(nonexistingId, eventDtoToModify));
 
         }
 
