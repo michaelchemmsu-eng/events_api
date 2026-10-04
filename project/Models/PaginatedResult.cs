@@ -12,7 +12,7 @@ namespace project.Models
         [Required(ErrorMessage = "total event count is required")]
         public int totalEvents { get; set; }
         [Required(ErrorMessage = "event array is required")]
-        public Event[] eventArray { get; set; }
+        public EventResponse[] eventArray { get; set; } = [];
         [Required(ErrorMessage = "current page is required")]
         public int currentPage { get; set; }
         [Required(ErrorMessage = "page size of current page is required")]

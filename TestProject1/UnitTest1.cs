@@ -105,7 +105,7 @@ namespace TestProject1
 
             //reveal the fields of the result object
             int totalEvents = result.totalEvents;
-            Event[] eventArray = result.eventArray;
+            EventResponse [] eventArray = result.eventArray;
             int currentPage = result.currentPage;
             int pageSizeOfCurrentPage = result.pageSizeOfCurrentPage;
 
