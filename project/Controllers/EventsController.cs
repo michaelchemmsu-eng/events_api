@@ -71,7 +71,7 @@ namespace project.Controllers
         /// <param name="eventDto">DTO для создания события</param>
         /// <returns></returns>
         [HttpPost]
-        public ActionResult<Event> CreateEvent([FromBody] EventDto eventDto) 
+        public ActionResult<EventResponse> CreateEvent([FromBody] EventDto eventDto) 
         {
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
             //var newId = Guid.NewGuid();
