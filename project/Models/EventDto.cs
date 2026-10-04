@@ -24,16 +24,16 @@ namespace project.Models
         /// дата начала события
         /// </summary>
         [Required (ErrorMessage = "Дата начала события обязательно")]
-        public DateTime StartAt { get; set; }
+        public DateTime? StartAt { get; set; }//nullable value. дефолтное значение : hasvalue = false 
         /// <summary>
         /// дата окончания события
         /// </summary>
         [Required (ErrorMessage = "Дата окончания события обязательно")]
-        public DateTime EndAt { get; set; }
+        public DateTime? EndAt { get; set; }//nullable value. дефолтное значение : hasvalue = false 
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (StartAt >= EndAt)
+            if (StartAt.HasValue && EndAt.HasValue && StartAt >= EndAt)
             {
                 yield return new ValidationResult(
                     "Дата начала события должна быть меньше даты окончания события",
