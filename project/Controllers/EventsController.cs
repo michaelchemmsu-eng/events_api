@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Diagnostics;
 using project.Models;
 using project.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace project.Controllers
 {
@@ -25,8 +26,8 @@ namespace project.Controllers
             [FromQuery] string? title,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
-            [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10) 
+            [FromQuery, Range(1, int.MaxValue, ErrorMessage = "Номер страницы должен быть не меньше 1.")] int page = 1,
+            [FromQuery, Range(1, 100, ErrorMessage = "Размер страницы должен быть от 1 до 100.")] int pageSize = 10) 
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список

@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
-using project.Excpetions;
 using project.Models;
 using System.Collections.Concurrent;
 using System.Reflection.Metadata.Ecma335;
@@ -19,6 +18,15 @@ namespace project.Services
             int pageSize = 10
             )
         {
+            if (page < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
+            }
+            if (pageSize < 1 || pageSize > 100)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
+            }
+
             var query = _events.Values.AsEnumerable();
 
            
@@ -37,16 +45,20 @@ namespace project.Services
             {
                 query = query.Where(e => e.EndAt <= to.Value);
             }
+            var filteredEvents = query.ToList();
+            int totalCount = filteredEvents.Count;
 
-            var pagedEvents = query
+
+            var pagedEvents = filteredEvents
                         .OrderBy(e => e.StartAt)//для тестирования сортируем по StartAt, так как ConcurrentDictionary не гарантирует порядок элементов. В тесте ожидаемые элементы хранятся в List.
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
+                        .Select(ev => ev.ToEventResponse())
                         .ToArray();
 
             return new PaginatedResult
             {
-                totalEvents = query.Count(),
+                totalEvents = totalCount,
                 eventArray = pagedEvents,
                 currentPage = page,
                 pageSizeOfCurrentPage = pagedEvents.Length
@@ -54,14 +66,14 @@ namespace project.Services
             
         }
         
-        public Event GetEventById(Guid id)
+        public EventResponse GetEventById(Guid id)
         {
             //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
             if (!_events.TryGetValue(id, out var retVal))
             {
                 throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
             }
-            return retVal;
+            return retVal.ToEventResponse();
         }
 
         //public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
@@ -74,7 +86,7 @@ namespace project.Services
         //    return true;
         //}
 
-        public Event CreateEvent(EventDto eventDto) 
+        public EventResponse CreateEvent(EventDto eventDto) 
         {
             var newEvent = new Event
             {
@@ -85,7 +97,7 @@ namespace project.Services
                 EndAt = eventDto.EndAt
             };
             _events[newEvent.Id] = newEvent;
-            return newEvent;
+            return newEvent.ToEventResponse();
         }
 
 
