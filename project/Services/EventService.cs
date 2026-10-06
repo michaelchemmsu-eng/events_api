@@ -93,8 +93,8 @@ namespace project.Services
                 Id = Guid.NewGuid(),
                 Title = eventDto.Title,
                 Description = eventDto.Description,
-                StartAt = eventDto.StartAt,
-                EndAt = eventDto.EndAt
+                StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
+                EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
             };
             _events[newEvent.Id] = newEvent;
             return newEvent.ToEventResponse();
@@ -109,8 +109,8 @@ namespace project.Services
                 Id = id,
                 Title = eventDto.Title,
                 Description = eventDto.Description,
-                StartAt = eventDto.StartAt,
-                EndAt = eventDto.EndAt
+                StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
+                EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
             };
             while (true) 
             {
