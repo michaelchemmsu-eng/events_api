@@ -197,46 +197,86 @@ namespace TestProject1
         [Fact]
         public void GetAllEvents_PaginatedResultFilteredByFromAndTo()
         {
-            //случай пустого Storage
-            DateTime fromFilter = DateTime.Now.AddDays(-5);
-            DateTime toFilter = DateTime.Now.AddDays(-1);
-            var paginatedResult = _eventService.GetAllEvents(null, fromFilter, toFilter);
-            var actualTotalEvents = paginatedResult.totalEvents;
-            var actualEventArray = paginatedResult.eventArray;
-            var actualCurrentPage = paginatedResult.currentPage;
-            var actualPageSizeOfCurrentPage = paginatedResult.pageSizeOfCurrentPage;
-            //Assert
-            Assert.Equal(0, actualTotalEvents);
-            Assert.Equal(0, actualEventArray.Length);
-            Assert.Equal(1, actualCurrentPage);
-            Assert.Equal(0, actualPageSizeOfCurrentPage);
+            // Arrange: хранилище изначально пустое
+            var fromFilter = DateTime.UtcNow.AddDays(-5);
+            var toFilter = DateTime.UtcNow.AddDays(5);
 
-            //слуйчай непустного storage
-            //Arrange
-            //так же, как и выше
-            int[] subscripts = {
-                1, 1, 1, 1,
-                2, 2, 2,
-                3, 3,
-                4};
-            int numberOfEvents = subscripts.Length;
-            for (int i = 0; i < numberOfEvents; i++)
+            // Act
+            var result = _eventService.GetAllEvents(null, fromFilter, toFilter);
+
+            // Assert: проверяем, что на пустом хранилище возвращаются нули
+            Assert.Equal(0, result.totalEvents);
+            Assert.Empty(result.eventArray);
+            Assert.Equal(1, result.currentPage);
+            Assert.Equal(0, result.pageSizeOfCurrentPage);
+
+
+
+
+            // Arrange
+            var baseDate = DateTime.UtcNow;
+
+            // Границы нашего фильтра от +5 дней до +15 дней
+            fromFilter = baseDate.AddDays(5);
+            toFilter = baseDate.AddDays(15);
+            
+            // Событие 1 - слишком рано (StartAt раньше fromFilter)
+            _eventService.CreateEvent(new EventDto
             {
-                EventDto eventDto = new EventDto
-                {
-                    Title = $"Title{subscripts[i]}",
-                    Description = $"Description{subscripts[i]}",
-                    StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
-                };
-                _eventService.CreateEvent(eventDto);
-            }
-            //Act
-            //тест: проверка фильтрации по from и to
-            var filteredResult = _eventService.GetAllEvents(null, fromFilter, toFilter).eventArray;
+                Title = "Early - Event 1",
+                StartAt = baseDate.AddDays(1),
+                EndAt = baseDate.AddDays(3)
+            });
+            // Событие 2 - внутри диапазона 
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Target - Event 2",
+                StartAt = baseDate.AddDays(6),
+                EndAt = baseDate.AddDays(8)
+            });
+            // Событие 3 - внутри диапазона 
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Target - Event 3",
+                StartAt = baseDate.AddDays(7),
+                EndAt = baseDate.AddDays(14)
+            });
+
+            // Событие 4 -  внутри диапазона 
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Target - Event 4",
+                StartAt = fromFilter,
+                EndAt = toFilter
+            });
+
+            // Событие 5 - слишком поздно (EndAt позже toFilter)
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Late Event",
+                StartAt = baseDate.AddDays(10),
+                EndAt = baseDate.AddDays(20) // Вылезает за toFilter (+15)
+            });
+
+            // Act
+            result = _eventService.GetAllEvents(null, fromFilter, toFilter);
+
             //Assert
-            Assert.All(filteredResult, e => Assert.True(e.StartAt >= fromFilter));
-            Assert.All(filteredResult, e => Assert.True(e.EndAt <= toFilter));
+            //проверка ровно 3 события из 5 должны пройти фильтр
+            Assert.Equal(3, result.totalEvents);
+            Assert.Equal(3, result.eventArray.Length);
+            // Проверяем, что попали именно нужные события по Titile
+            var titles = result.eventArray.Select(e => e.Title).ToList();
+            Assert.Contains("Target - Event 2", titles);
+            Assert.Contains("Target - Event 3", titles);
+            Assert.Contains("Target - Event 4", titles);
+            // Проверяем, что лишние события НЕ попали
+            Assert.DoesNotContain("Early - Event 1", titles);
+            Assert.DoesNotContain("Late Event", titles);
+            
+            Assert.All(result.eventArray, e => Assert.True(e.StartAt >= fromFilter));
+            Assert.All(result.eventArray, e => Assert.True(e.EndAt <= toFilter));
+
         }
 
 
@@ -527,8 +567,8 @@ namespace TestProject1
             {
                 string expectedTitle = expectedEventDtos[i].Title;
                 string expectedDescription = expectedEventDtos[i].Description;
-                DateTime expectedStartAt = expectedEventDtos[i].StartAt;
-                DateTime expectedEndAt = expectedEventDtos[i].EndAt;
+                DateTime expectedStartAt = expectedEventDtos[i].StartAt.Value;
+                DateTime expectedEndAt = expectedEventDtos[i].EndAt.Value;
 
                 string actualTitle = actualPaginatedResults.eventArray[i].Title;
                 string actualDescription = actualPaginatedResults.eventArray[i].Description;
@@ -540,7 +580,6 @@ namespace TestProject1
                 Assert.Equal(expectedStartAt, actualStartAt);
                 Assert.Equal(expectedEndAt, actualEndAt);
 
-
             }
 
         }
@@ -550,34 +589,94 @@ namespace TestProject1
         [Fact]
         public void CombinedFiltering_TitleAndFromAndTo_PaginatedResult()
         {
-            //Arrange
-            //так же, как выше
-            int[] subscripts = {
-                1, 1, 1, 1,
-                2, 2, 2,
-                3, 3,
-                4};
-            int numberOfEvents = subscripts.Length;
-            for (int i = 0; i < numberOfEvents; i++)
+            //Arrange 
+            var baseDate = DateTime.UtcNow;
+
+            //диапазон поиска
+            string titleFilter = "Meetup";
+            DateTime fromFilter = baseDate.AddDays(5);
+            DateTime toFilter = baseDate.AddDays(15);
+
+            // Событие 1 - в диапазоне, название содержит "Meetup" -> должно пройти фильтр
+            _eventService.CreateEvent(new EventDto
             {
-                EventDto eventDto = new EventDto
-                {
-                    Title = $"Title{subscripts[i]}",
-                    Description = $"Description{subscripts[i]}",
-                    StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
-                };
-                _eventService.CreateEvent(eventDto);
-            }
-            string titleFilter = "Title1";
-            DateTime fromFilter = DateTime.Now.AddDays(-5);
-            DateTime toFilter = DateTime.Now.AddDays(-1);
-            //Act
-            var filteredResult = _eventService.GetAllEvents(titleFilter, fromFilter, toFilter).eventArray;
-            //Assert
-            Assert.All(filteredResult, e => Assert.Equal(titleFilter, e.Title));
-            Assert.All(filteredResult, e => Assert.True(e.StartAt >= fromFilter));
-            Assert.All(filteredResult, e => Assert.True(e.EndAt <= toFilter));
+                Title = "DotNet - Meetup - Spring",
+                StartAt = baseDate.AddDays(6),
+                EndAt = baseDate.AddDays(8)
+            });
+
+            // Событие 2 - в диапазоне и название содержит "Meetup" -> должно пройти фильтр
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "C# Meetup Online",
+                StartAt = baseDate.AddDays(7),
+                EndAt = baseDate.AddDays(14)
+            });
+
+            // Событие 3 - содержит "Meetup", но дата слишком ранняя -> отсеять
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Old Meetup",
+                StartAt = baseDate.AddDays(1),
+                EndAt = baseDate.AddDays(3)
+            });
+
+            // Событие 4 - название подходит, но дата слишком поздняя -> отсеять
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Future Meetup",
+                StartAt = baseDate.AddDays(10),
+                EndAt = baseDate.AddDays(25) // Вылезает за toFilter (+15)
+            });
+
+            // Событие 5 - даты подходят, но название не содержит "Meetup" -> отсеять
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Java Conference", 
+                StartAt = baseDate.AddDays(7),
+                EndAt = baseDate.AddDays(10)
+            });
+
+            // Событие 6 - даты и название не подходят -> отсеять
+            _eventService.CreateEvent(new EventDto
+            {
+                Title = "Python Course",
+                StartAt = baseDate.AddDays(1),
+                EndAt = baseDate.AddDays(30)
+            });
+
+            // Act
+            var result = _eventService.GetAllEvents(titleFilter, fromFilter, toFilter);
+
+            // Assert (Проверки)
+
+            //ровно 2 события из 6 должны пройти комбинированный фильтр!
+            Assert.Equal(2, result.totalEvents);
+            Assert.Equal(2, result.eventArray.Length);
+
+            // Проверяем, что вернулись именно те два события:
+            var returnedTitles = result.eventArray.Select(e => e.Title).ToList();
+            Assert.Contains("DotNet - Meetup - Spring", returnedTitles);
+            Assert.Contains("C# Meetup Online", returnedTitles);
+
+            // Проверяем, что отсеянные события точно не попали:
+            Assert.DoesNotContain("Old Meetup", returnedTitles);
+            Assert.DoesNotContain("Java Conference", returnedTitles);
+            Assert.DoesNotContain("Python Course", returnedTitles);
+            Assert.DoesNotContain("Future Meetup", returnedTitles);
+
+
+
+            // Проверяем свойства каждого возвращенного элемента:
+            Assert.All(result.eventArray, e =>
+                                        {
+                                            // Название содержит искомое слово без учета регистра
+                                            Assert.Contains(titleFilter, e.Title, StringComparison.OrdinalIgnoreCase);
+                                            // Даты лежат в диапазоне
+                                            Assert.True(e.StartAt >= fromFilter, "StartAt должен быть >= fromFilter");
+                                            Assert.True(e.EndAt <= toFilter, "EndAt должен быть <= toFilter");
+                                        }
+            );
         }
 
 

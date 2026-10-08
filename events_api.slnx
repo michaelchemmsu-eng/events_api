@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="BookingService.Test/BookingService.Test.csproj" Id="77910c6e-9b73-43dd-8534-71f339499c78" />
   <Project Path="project/project.csproj" />
   <Project Path="TestProject1/TestProject1.csproj" />
 </Solution>

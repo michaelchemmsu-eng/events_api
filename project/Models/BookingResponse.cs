@@ -5,11 +5,18 @@
     /// </summary>
     public class BookingResponse
     {
-        public Guid Id { get; set; }
+        /// <summary>
+        /// идентификатор бронирования
+        /// </summary>
+        public Guid BookingId { get; set; }
+        /// <summary>
+        /// идентификатор события, к которому относится бронирование в ответе
+        /// </summary>
         public Guid EventId { get; set; }
+        /// <summary>
+        /// статус бронирования в ответе
+        /// </summary>
         public BookingStatus Status { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? ProcessedAt { get; set; }
 
     }
 }
