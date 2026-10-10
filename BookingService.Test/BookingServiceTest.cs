@@ -218,7 +218,7 @@ namespace BookingService.Test
             //Act & Assert
             KeyNotFoundException exception = await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
             {
-                await _bookingService.CreateBookingAsync(NonExistingBookingId);
+                await _bookingService.GetBookingByIdAsync(NonExistingBookingId); ;
             });
         }
 

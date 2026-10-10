@@ -13,8 +13,9 @@ namespace project.Services
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     //получаем все брони со всеми статусами   
-                    var allBookings = _bookingRepository.GetAllBookings(null, null, null);
-                    var pendingBookings = allBookings.BookingsArray.Where(b => b.Status == Models.BookingStatus.Pending);
+                    var allBookings = _bookingRepository.GetAllBookings();//по умолчанию 1 страница,размер страницы = 10
+                    
+                    var pendingBookings = allBookings.Where(b => b.Status == Models.BookingStatus.Pending);
                     foreach (var pendingBookingResp in pendingBookings)
                     {
                         //имитирующая обращение к внешней системе;
@@ -26,6 +27,7 @@ namespace project.Services
                         };
                         _bookingRepository.UpdateBooking(pendingBookingResp.BookingId, proccessedBookingDto);
                     }
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 }
             }
             finally 

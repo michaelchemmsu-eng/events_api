@@ -8,7 +8,19 @@ namespace project.Services
     public class InMemoryBookingDictionary: IBookingRepository
     {
         private readonly ConcurrentDictionary<Guid, Booking> _bookings = new();
-        public PaginatedResultBookings GetAllBookings(
+
+        public BookingResponse[] GetAllBookings() 
+        {
+            if (_bookings.IsEmpty)
+            {
+                return Array.Empty<BookingResponse>();
+            }
+
+            return _bookings.Values.Select(booking => booking.ToBookingResponse()).ToArray();
+        } 
+
+
+        public PaginatedResultBookings GetAllBookingsPaginated(
             Guid? EventId,
             DateTime? from, 
             DateTime? to,
