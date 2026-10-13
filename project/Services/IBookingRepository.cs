@@ -26,18 +26,42 @@ namespace project.Services
         PaginatedResultBookings GetAllBookingsPaginated(Guid? EventId, DateTime? from, DateTime? to, int page = 1, int pageSize = 10);
 
         /// <summary>
-        /// Получить все бронирования в виде массива BookingsResponse[]
+        /// Получить все бронирования в виде массива BookingsResponse[], пустого или непустого
+        /// 
         /// </summary>
-        /// <returns> BookingsResponse[]</returns>
-        BookingResponse[] GetAllBookings(); 
+        /// <returns> BookingsResponse[] </returns>
+        BookingResponse[] GetAllBookings();
 
         //получить бронь по id;
+        /// <summary>
+        /// Получить бронирование по его уникальному идентификатору (bookingId).
+        /// выбросит исключение, если бронирование с указанным идентификатором не найдено.
+        /// </summary>
+        /// <param name="bookingId"></param>
+        /// <returns></returns>
         BookingResponse GetBookingById(Guid bookingId);
 
         // обновить событие целиком;
+        /// <summary>
+        /// Обновить существующее бронирование с указанным уникальным идентификатором (bookingId) на основе предоставленных данных в объекте BookingDto.
+        /// выбрасывает исключение, если бронирование с указанным идентификатором не найдено.
+        /// </summary>
+        /// <param name="bookingId"></param>
+        /// <param name="BookingDto"></param>
         void UpdateBooking(Guid bookingId, BookingDto BookingDto);
         // удалить событие;
+        /// <summary>
+        /// Удалить существующее бронирование с указанным уникальным идентификатором (bookingId).
+        /// выбрасывает исключение, если бронирование с указанным идентификатором не найдено.
+        /// </summary>
+        /// <param name="bookingId"></param>
         void DeleteBooking(Guid bookingId);
+        /// <summary>
+        /// Создать новое бронирование на основе предоставленных данных в объекте BookingRequest.
+        /// вернуть BookingResponse с информацией о созданном бронировании.
+        /// </summary>
+        /// <param name="bookingRequest"></param>
+        /// <returns>BookingResponse с информацией о созданном бронировании</returns>
         BookingResponse CreateBooking(BookingRequest bookingRequest);
 
 

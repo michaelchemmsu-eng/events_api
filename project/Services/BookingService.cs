@@ -29,7 +29,7 @@ namespace project.Services
             {
                 _eventService.GetEventById(eventId);// проверяем, что событие существует, если нет, то выбрасывается исключение KeyNotFoundException
                 //создаем объект бронирования через репозиторий
-                await Task.Delay(100); // имитация асинхронной операции
+                
                 return _bookingStorage.CreateBooking(new BookingRequest { EventId = eventId });
             }
             catch (KeyNotFoundException)
@@ -50,7 +50,7 @@ namespace project.Services
         {
             try 
             {
-                await Task.Delay(100);
+               
                 return _bookingStorage.GetBookingById(bookingId);
             }
             catch (KeyNotFoundException ex)
