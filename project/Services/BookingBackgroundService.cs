@@ -13,7 +13,7 @@ namespace project.Services
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     //получаем все брони со всеми статусами   
-                    var allBookings = _bookingRepository.GetAllBookings();//по умолчанию 1 страница,размер страницы = 10
+                    var allBookings = _bookingRepository.GetAllBookings();//
                     
                     var pendingBookings = allBookings.Where(b => b.Status == Models.BookingStatus.Pending);
                     foreach (var pendingBookingResp in pendingBookings)
