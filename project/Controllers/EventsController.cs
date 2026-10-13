@@ -8,8 +8,8 @@ using System.ComponentModel.DataAnnotations;
 namespace project.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class EventsController(IEventService _eventService, ILogger<EventsController> _logger) : ControllerBase 
+    [Route("events")]
+    public class EventsController(IEventService _eventService, IBookingService _bookingService, ILogger<EventsController> _logger) : ControllerBase 
     {
         //GET /events — получить список всех событий;
         /// <summary>
@@ -32,6 +32,64 @@ namespace project.Controllers
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
             return Ok(_eventService.GetAllEvents(title, from, to, page, pageSize));
+        }
+
+
+
+
+
+
+        /// <summary>
+        /// Создать бронирование для события c id = eventId
+        /// если события нет, то ответ с кодом 404
+        /// </summary>
+        /// <param name="eventId">Id события</param>
+        /// <returns></returns>
+        [HttpPost("{eventId}/book")]
+        public async Task <ActionResult<BookingResponse>> CreateBookingAsync(Guid eventId) 
+        {
+            /*
+            вызывает BookingService.CreateBookingAsync;
+            возвращает 202 Accepted;
+            в теле ответа возвращает информацию о созданной брони (включая Id, EventId, Status);
+            в заголовке Location возвращает ссылку на ресурс брони (например, /bookings/{bookingId});
+            если событие не найдено — возвращает 404.
+             */
+            try
+            {
+                var bookingResponse = await _bookingService.CreateBookingAsync(eventId);//Id бронирования генерируется внутри хранилища
+                //возврат Accepted 202
+                //в теле ответа Id, EventId, Status
+                var body = new
+                {
+                    Id = bookingResponse.BookingId,
+                    EventId = bookingResponse.EventId,
+                    Status = bookingResponse.Status.ToString()
+                };
+                //в заголовке Location возвращает ссылку на ресурс брони (например, /bookings/{bookingId});
+                var url="/bookings/" + bookingResponse.BookingId;
+                return Accepted(url, body);
+
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Событие с идентификатором {EventId} не найдено", eventId);
+                //Problem Details
+                var problemDetails = new ProblemDetails
+                {
+                    Status = StatusCodes.Status404NotFound,
+                    Title = "Событие не найдено",
+                    Detail = $"Событие с Id {eventId} не найдено"
+                }
+                ;
+                return NotFound(problemDetails);//код 404
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
+                return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
+            }
+
         }
 
 
@@ -76,10 +134,7 @@ namespace project.Controllers
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
             //var newId = Guid.NewGuid();
             var newEvent = _eventService.CreateEvent(eventDto);
-            //if (!isCreated)
-            //{
-            //    return Conflict(new { message = $"Событие с Id {newId} уже существует" });
-            //}
+           
             return CreatedAtAction
                 (
                     nameof(GetEventById),
