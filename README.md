@@ -13,7 +13,7 @@ RESTful API сервис для управления событиями.
 ### 1. Клонирование репозитория и переход в ветку
 Если репозиторий еще не склонирован:
 ```bash
-git clone -b sprint-3 https://github.com/michaelchemmsu-eng/events_api.git
+git clone -b sprint-4 https://github.com/michaelchemmsu-eng/events_api.git
 cd events_api
 ```
 
@@ -166,10 +166,11 @@ dotnet run --project project
 * **Тело запроса:**
 ```json
 {
-  "title": "string2",
-  "description": "string2",
-  "startAt": "2026-09-08T07:11:04.25Z",
-  "endAt": "2026-10-08T07:11:04.25Z"
+  "title": "string",
+  "description": "string",
+  "startAt": "2026-09-14T08:26:11.257Z",
+  "endAt": "2026-10-14T08:26:11.257Z",
+  "totalSeats": 150
 }
 ```
 * **Проверка валидации входных данных:**
@@ -177,44 +178,48 @@ dotnet run --project project
   * description — описание события ,необязательное поле
   * startAt — дата и время начала события , обязательное поле, должно быть меньше endAt
   * endAt — дата и время окончания события , обязательное поле, должно быть больше startAt
+  * totalSeats - общее число мест, обязательное поле, должно быть >= 0
 * **Метод:** `POST`
 * **URL:** `/events`
 * **Успешный ответ:** `201 Created`
 * **Тело ответа:**
 ```json
 {
-  "id": "1692a748-922f-4dd4-a3a7-04d11b68ca61",
-  "title": "string2",
-  "description": "string2",
-  "startAt": "2026-09-08T07:11:04.25Z",
-  "endAt": "2026-10-08T07:11:04.25Z"
+  "id": "ae59ebe6-b629-45ca-b141-5635cd96f7fb",
+  "title": "string",
+  "description": "string",
+  "startAt": "2026-09-14T08:26:11.257Z",
+  "endAt": "2026-10-14T08:26:11.257Z",
+  "totalSeats": 150,
+  "availableSeats": 150
 }
 ```
-**Response headers**
-` content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:24:22 GMT 
- location: https://localhost:7087/events/1692a748-922f-4dd4-a3a7-04d11b68ca61 
- server: Kestrel `
+
+
 * **Неуспешный ответ (валидация):** `400 Bad Request`
+* **Тело запроса**
+```JSON
+{
+  "title": "string",
+  "description": "string",
+  "startAt": "2026-09-14T08:26:11.257Z",
+  "endAt": "2026-10-14T08:26:11.257Z",
+  "totalSeats": null
+}
+```
+* **Тело ответа:**
 ```JSON
 {
   "title": "Vallidation Error occurred",
   "status": 400,
   "instance": "/events",
   "errors": {
-    "EndAt": [
-      "Дата начала события должна быть меньше даты окончания события"
-    ],
-    "StartAt": [
-      "Дата начала события должна быть меньше даты окончания события"
+    "TotalSeats": [
+      "Необходимо указать общее количество мест на событии"
     ]
   }
 }
 ```
-**Response headers**
- `content-type: application/problem+json; charset=utf-8 
- date: Thu,08 Oct 2026 07:30:39 GMT 
- server: Kestrel`
 
 
 
@@ -383,3 +388,12 @@ dotnet run --project project
 ```https://localhost:7087/events/317f1592-9109-4050-a6ea-a8ada60dcaf0/book
 запрос на получение статуса бронирования с Id 8e318042-0986-46cd-a641-2d4ec6769b4c:
 ```https://localhost:7087/bookings/8e318042-0986-46cd-a641-2d4ec6769b4c
+
+
+
+
+
+
+## потокобезопасность при конкурентных запросах и предотвращение овербукинга
+Метод контроллера CreateEvent принимает значение EventDto с объязательным свойством totalSeats. 
+totalSeats валидируется автоматически в привязке модели. 

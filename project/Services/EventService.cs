@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using project.Models;
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection.Metadata.Ecma335;
 
 namespace project.Services
@@ -66,6 +67,8 @@ namespace project.Services
             
         }
         
+
+
         public EventResponse GetEventById(Guid id)
         {
             //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
@@ -76,28 +79,25 @@ namespace project.Services
             return retVal.ToEventResponse();
         }
 
-        //public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
-        //{
-        //    if (_events.TryGetValue(Id, out _))
-        //    {
-        //        return false;
-        //    }
-        //    _events[Id] = new Event { Id = Id, Title = title, Description = Description, StartAt = StartAt, EndAt = EndAt };
-        //    return true;
-        //}
 
+        /// <summary>
+        /// метод создания сущности Event.
+        /// </summary>
+        /// <param name="eventDto"></param>
+        /// <returns></returns>
         public EventResponse CreateEvent(EventDto eventDto) 
         {
-            var newEvent = new Event
+            try 
             {
-                Id = Guid.NewGuid(),
-                Title = eventDto.Title,
-                Description = eventDto.Description,
-                StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
-                EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
-            };
-            _events[newEvent.Id] = newEvent;
-            return newEvent.ToEventResponse();
+                var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
+                _events[newEvent.Id] = newEvent;
+                return newEvent.ToEventResponse();
+            }
+            catch (ValidationException ex) 
+            {
+                throw;
+            }
+            
         }
 
 
@@ -107,7 +107,7 @@ namespace project.Services
             var updatedEvent = new Event 
             {
                 Id = id,
-                Title = eventDto.Title,
+                Title = eventDto.Title!,//Title is annotated with required
                 Description = eventDto.Description,
                 StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
                 EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null

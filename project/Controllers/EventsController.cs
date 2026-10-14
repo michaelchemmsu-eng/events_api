@@ -133,14 +133,27 @@ namespace project.Controllers
         {
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
             //var newId = Guid.NewGuid();
-            var newEvent = _eventService.CreateEvent(eventDto);
-           
-            return CreatedAtAction
-                (
-                    nameof(GetEventById),
-                    new { id = newEvent.Id},
-                    newEvent
-                );
+            try
+            {
+                var newEvent = _eventService.CreateEvent(eventDto); //бросает исключение, если eventDto.TotalSeats!.Value < 0
+                return CreatedAtAction
+                 (
+                     nameof(GetEventById),
+                     new { id = newEvent.Id },
+                     newEvent
+                 );
+            }
+            catch (ValidationException ex)
+            {
+                var validationProbllemClassObject = new ValidationProblemDetails(new Dictionary<string, string[]>
+                {
+                    {"TotalSeats",new[]{"Value must be greater than or equal to 0"} }
+                });
+                return ValidationProblem(validationProbllemClassObject);
+            }
+
+
+         
         }
 
 

@@ -15,10 +15,11 @@ namespace project.Models
         /// заголовок
         /// </summary>
         [Required (ErrorMessage = "Название события обязательно")]
-        public string Title { get; set; }
+        public string? Title { get; set; }
         /// <summary>
         /// Описание события
         /// </summary>
+        // необязательное поле
         public string? Description { get; set; }
         /// <summary>
         /// дата начала события
@@ -30,6 +31,14 @@ namespace project.Models
         /// </summary>
         [Required (ErrorMessage = "Дата окончания события обязательно")]
         public DateTime? EndAt { get; set; }//nullable value. дефолтное значение : hasvalue = false 
+
+        /// <summary>
+        /// общее количество мест на событии, required
+        /// </summary>
+        [Required (ErrorMessage = "Необходимо указать общее количество мест на событии")]
+        //[Range(0,int.MaxValue,ErrorMessage = "Количество мест должно быть больше нуля")] валидируется в Event
+        //почему тип int? , а не int 
+        public int? TotalSeats { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
