@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Diagnostics;
+using project.CustomExceptions;
 using project.Models;
 using project.Services;
 using System.ComponentModel.DataAnnotations;
@@ -67,7 +68,7 @@ namespace project.Controllers
                     Status = bookingResponse.Status.ToString()
                 };
                 //в заголовке Location возвращает ссылку на ресурс брони (например, /bookings/{bookingId});
-                var url="/bookings/" + bookingResponse.BookingId;
+                var url = "/bookings/" + bookingResponse.BookingId;
                 return Accepted(url, body);
 
             }
@@ -84,6 +85,11 @@ namespace project.Controllers
                 ;
                 return NotFound(problemDetails);//код 404
             }
+            catch (NoAvailableSeatsException ex) 
+            {
+                throw;
+            }
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
@@ -107,7 +113,7 @@ namespace project.Controllers
         public ActionResult<Event> GetEventById(Guid id)
         {
             _logger.LogInformation("Вызов метода GetEventById для события с ID: {EventId}", id);
-            var res = _eventService.GetEventById(id);//бросит exception, если не найдено событие с таким id
+            var res = _eventService.GetEventResponseById(id);//бросит exception, если не найдено событие с таким id
             //if (res == null)
             //{
             //    return NotFound(new { message = $"Событие с Id {id} не найдено" });

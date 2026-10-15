@@ -84,7 +84,7 @@ dotnet run --project project
 пример запроса:
 - POST /events/3fa85f64-5717-4562-b3fc-2c963f66afa6/book
 
-## формат ответа при ошибках
+## формат ответа при ошибках "события не найдено"
 ``` JSON
 {
   "title": "Событие не найдено",
@@ -96,6 +96,15 @@ dotnet run --project project
  `content-type: application/problem+json; charset=utf-8 
  date: Thu,08 Oct 2026 07:07:52 GMT 
  server: Kestrel` 
+## формат ответа при ошибках "No available seats for the Event"
+``` JSON
+{
+  "title": "Incorrect request incoming parameter value",
+  "status": 409,
+  "detail": "No available seats for the Event 826d41e3-7e06-4115-a253-4c836583d98a",
+  "instance": "/events/826d41e3-7e06-4115-a253-4c836583d98a/book"
+}
+```
 
  ## формат ответа при успешном создании бронирования
  ``` JSON

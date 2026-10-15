@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using project.CustomExceptions;
 using System.ComponentModel.DataAnnotations;
 
 namespace project.Middlewares
@@ -26,8 +27,10 @@ namespace project.Middlewares
                 {
                     //404 Not Found для ситуаций, когда ресурс не найден;
                     KeyNotFoundException => (StatusCodes.Status404NotFound, "Resourse not found"),
-                    
-                    
+
+                    //409 conflict
+                    NoAvailableSeatsException => (StatusCodes.Status409Conflict, "Incorrect request incoming parameter value"),
+
                     //400 Bad Request для ошибок валидации;
                     ArgumentNullException or
                     ArgumentOutOfRangeException or
@@ -37,13 +40,16 @@ namespace project.Middlewares
                     //500 Internal Server Error для непредвиденных ошибок.
                     _ => (StatusCodes.Status500InternalServerError, "Internal server error")
                 };
+
                 _logger.LogError(ex, "An error occurred while processing the request." +
                     " Method:{0}, Path:{1}", context.Request.Method, context.Request.Path);
+
                 if (context.Response.HasStarted)
                 {
                     _logger.LogWarning("Response has started. Cannot send Problem Details");
                     return;
                 }
+
                 context.Response.Clear();
                 context.Response.StatusCode = statusCode;
                 context.Response.ContentType = "application/json";

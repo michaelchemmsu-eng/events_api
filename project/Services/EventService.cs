@@ -66,10 +66,17 @@ namespace project.Services
             };
             
         }
-        
 
 
-        public EventResponse GetEventById(Guid id)
+        /// <summary>
+        /// Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id
+        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
+        /// </summary>
+        /// <param name="id">Id события Event</param>
+        /// <returns>EventResponse or throws KeyNotFoundException </returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для контроллеров -- возвращает Dto
+        public EventResponse GetEventResponseById(Guid id)
         {
             //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
             if (!_events.TryGetValue(id, out var retVal))
@@ -77,6 +84,25 @@ namespace project.Services
                 throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
             }
             return retVal.ToEventResponse();
+        }
+
+
+        /// <summary>
+        /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
+        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>Event or throws KeyNotFoundException</returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для бизнес-логики в других сервисах -- возвращает Event
+        public Event GetEventById(Guid id)
+        {
+            //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
+            if (!_events.TryGetValue(id, out var retVal))
+            {
+                throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
+            }
+            return retVal;
         }
 
 
@@ -100,7 +126,14 @@ namespace project.Services
             
         }
 
-
+        /// <summary>
+        /// метод обновления события.
+        /// принимает в качестве параметра Id события для обновления, EventDto 
+        /// </summary>
+        /// <param name="id">ID события</param>
+        /// <param name="eventDto">EventDto</param>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для контроллеров
         public void UpdateEvent(Guid id, EventDto eventDto) 
         {
             
@@ -111,6 +144,7 @@ namespace project.Services
                 Description = eventDto.Description,
                 StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
                 EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
+
             };
             while (true) 
             {
@@ -128,6 +162,46 @@ namespace project.Services
             }
            
         }
+
+        /// <summary>
+        /// метод обновления события.
+        /// принимает в качестве параметра Id события для обновления, Event 
+        /// </summary>
+        /// <param name="id">ID события</param>
+        /// <param name="Event">Event</param>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для бизнес-логики в других сервисах
+        public void UpdateEventById(Guid id, Event Event)
+        {
+
+            var updatedEvent = new Event
+            {
+                Id = id,
+                Title = Event.Title!,
+                Description = Event.Description,
+                StartAt = Event.StartAt!,
+                EndAt = Event.EndAt!,
+                TotalSeats = Event.TotalSeats,
+                AvailableSeats =Event.AvailableSeats
+
+            };
+            while (true)
+            {
+                if (!_events.TryGetValue(id, out Event? existingEvent))
+                {
+                    throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
+                }
+                // Атомарная замена
+                // Если за время замены другой поток успел его заменить, 
+                // TryUpdate вернет false, и цикл повторится со свежим existingEvent
+                if (_events.TryUpdate(id, updatedEvent, existingEvent))
+                {
+                    return;
+                }
+            }
+
+        }
+
 
         public void DeleteEvent(Guid id) 
         {
