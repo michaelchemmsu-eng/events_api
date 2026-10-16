@@ -11,6 +11,14 @@ namespace project.Services
     {
         private ConcurrentDictionary<Guid,Event> _events = new();
 
+        public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) 
+        {
+            //иммитация обращения к БД
+            await Task.Delay(500,ct);  
+            return _events.ContainsKey(id);
+        }
+
+
         public PaginatedResult GetAllEvents(
             string? title,
             DateTime? from,

@@ -41,7 +41,9 @@ namespace BookingService.Test
                         Title = "Test Event",
                         Description = "Test Description",
                         StartAt = DateTime.UtcNow.AddDays(1),
-                        EndAt = DateTime.UtcNow.AddDays(3)
+                        EndAt = DateTime.UtcNow.AddDays(3),
+                        TotalSeats = 15
+                   
                     }
                 );
             //получаем Id созданного события
@@ -72,7 +74,8 @@ namespace BookingService.Test
                         Title = "Test Event",
                         Description = "Test Description",
                         StartAt = DateTime.UtcNow.AddDays(1),
-                        EndAt = DateTime.UtcNow.AddDays(3)
+                        EndAt = DateTime.UtcNow.AddDays(3),
+                        TotalSeats = 15
                     }
                 );
             //получаем Id созданного события
@@ -112,7 +115,8 @@ namespace BookingService.Test
                         Title = "Test Event",
                         Description = "Test Description",
                         StartAt = DateTime.UtcNow.AddDays(1),
-                        EndAt = DateTime.UtcNow.AddDays(3)
+                        EndAt = DateTime.UtcNow.AddDays(3),
+                        TotalSeats = 15
                     }
                 );
             //получаем Id созданного события
@@ -153,6 +157,12 @@ namespace BookingService.Test
 
         }
 
+
+
+
+
+
+
         //Неуспешные сценарии:
         //создание брони для несуществующего события;
         [Fact]
@@ -161,11 +171,20 @@ namespace BookingService.Test
             //Arrange
             var eventId = Guid.NewGuid();
             //Act & Assert
-            KeyNotFoundException exception = await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
-            {
-                await _bookingService.CreateBookingAsync(eventId);
-            });
+            KeyNotFoundException exception = await Assert.ThrowsAsync<KeyNotFoundException>(
+                async () =>
+                        {
+                            await _bookingService.CreateBookingAsync(eventId);
+                        });
         }
+
+
+
+
+
+
+
+
 
 
         //создание брони для удалённого события;
@@ -181,7 +200,8 @@ namespace BookingService.Test
                         Title = "Test Event",
                         Description = "Test Description",
                         StartAt = DateTime.UtcNow.AddDays(1),
-                        EndAt = DateTime.UtcNow.AddDays(3)
+                        EndAt = DateTime.UtcNow.AddDays(3),
+                        TotalSeats = 15
                     }
                 );
             //получаем Id созданного события
@@ -198,6 +218,15 @@ namespace BookingService.Test
 
 
 
+
+
+
+
+
+
+
+
+
         //получение брони по несуществующему Id.
         [Fact]
         public async Task GetBookingByNonExistingBookingId_ThrowsException() 
@@ -211,7 +240,8 @@ namespace BookingService.Test
                         Title = "Test Event",
                         Description = "Test Description",
                         StartAt = DateTime.UtcNow.AddDays(1),
-                        EndAt = DateTime.UtcNow.AddDays(3)
+                        EndAt = DateTime.UtcNow.AddDays(3),
+                        TotalSeats = 15
                     }
                 );
             Guid NonExistingBookingId = Guid.NewGuid();
@@ -220,6 +250,33 @@ namespace BookingService.Test
             {
                 await _bookingService.GetBookingByIdAsync(NonExistingBookingId); ;
             });
+        }
+
+
+
+
+
+
+
+
+        //Создание брони уменьшает AvailableSeats на 1.
+        [Fact]
+        public void CreateBooking_LowersAvailableSeatsByOne()
+        {
+            //Arrange
+            _eventService.CreateEvent
+               (
+                   new EventDto
+                   {
+                       Title = "Test Event 1",
+                       Description = "Test Description 1",
+                       StartAt = DateTime.UtcNow.AddDays(1),
+                       EndAt = DateTime.UtcNow.AddDays(3),
+                       TotalSeats = 15
+                   }
+               );
+            //получить все события
+
         }
 
     }

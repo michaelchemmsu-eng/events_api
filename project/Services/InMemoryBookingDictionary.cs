@@ -9,6 +9,15 @@ namespace project.Services
     {
         private readonly ConcurrentDictionary<Guid, Booking> _bookings = new();
 
+        
+        public IEnumerable<Booking> GetPending() 
+        {
+            return _bookings.Values
+                .Where(b => b.Status == BookingStatus.Pending)
+                .AsEnumerable();
+        }
+
+
         public BookingResponse[] GetAllBookings() 
         {
             if (_bookings.IsEmpty)

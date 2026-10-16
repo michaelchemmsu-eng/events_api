@@ -15,6 +15,14 @@ namespace project.Services
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров -- возвращает Dto
         EventResponse GetEventResponseById(Guid id);
+        /// <summary>
+        /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
+        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
+        /// </summary>
+        /// <param name="id">Id события Event</param>
+        /// <returns>Event or throws KeyNotFoundException </returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для бизнес-логики в другиз сервисах -- возвращает Event
         Event GetEventById(Guid id);
 
         //создать событие
@@ -40,9 +48,22 @@ namespace project.Services
         /// <param name="Event">Event</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах
-        void UpdateEventById(Guid id, Event eventDto);
-        // удалить событие;
+        void UpdateEventById(Guid id, Event Event);
+        /// <summary>
+        /// удалить событие. В качестве параметра -- Id события Event.
+        /// Если события с Id нет в хранилище, то бросается исключение KeyNotFoundException 
+        /// </summary>
+        /// <param name="id"></param>
         void DeleteEvent(Guid id);
+        /// <summary>
+        /// Проверяет на наличие события Event с id в хранилище.
+        /// возвращает объект Task с булевым значением
+        /// </summary>
+        /// <param name="Id"> Id события </param>
+        /// <param name="ct"> токен отмены </param>
+        /// <returns>Task&lt;bool&gt;</returns>
+        // проверка события по Id на наличие в репозитории -- это обращение к БД. Поэтому асинхронная функция
+        Task<bool> IsExistInRepositoryAsync(Guid Id, CancellationToken ct);
 
     }
 }
