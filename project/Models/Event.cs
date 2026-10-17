@@ -49,10 +49,10 @@ namespace project.Models
             {
                 throw new ValidationException("Validation error: TotalSeats has null value");
             }
-            else if (eventDto.TotalSeats!.Value < 0) 
+            else if (eventDto.TotalSeats!.Value <= 0) 
             {
                
-                throw new ValidationException("Validation error: TotalSeats has negative value");
+                throw new ValidationException("Validation error: a value for Total Seats must be positive");
             }
 
             return new Event

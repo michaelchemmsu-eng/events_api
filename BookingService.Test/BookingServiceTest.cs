@@ -6,7 +6,9 @@ using Newtonsoft.Json.Bson;
 using project.CustomExceptions;
 using project.Models;
 using project.Services;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Net;
 namespace BookingService.Test
 {
     public class BookingServiceTest
@@ -817,6 +819,39 @@ namespace BookingService.Test
                 Assert.Single(BookingIds, id);
             }         
             
+        }
+
+
+
+
+
+
+
+
+
+        [Fact]
+        public void CreateEvent_WhenTotalSeatsIsZeroOrNegative_ThrowsValidationException()
+        {
+            // Arrange
+            var dtoWithZeroSeats = new EventDto
+            {
+                Title = "Title",
+                StartAt = DateTime.UtcNow.AddDays(1),
+                EndAt = DateTime.UtcNow.AddDays(2),
+                TotalSeats = 0 
+            };
+            var dtoWithNegativeValueSeats = new EventDto
+            {
+                Title = "Title",
+                StartAt = DateTime.UtcNow.AddDays(1),
+                EndAt = DateTime.UtcNow.AddDays(2),
+                TotalSeats = 0
+            };
+
+            // Act and Assert: проверяем, что выбрасывается ValidationException 
+            Assert.Throws<ValidationException>(() =>_eventService.CreateEvent(dtoWithZeroSeats));
+            Assert.Throws<ValidationException>(() => _eventService.CreateEvent(dtoWithNegativeValueSeats));
+
         }
 
 
