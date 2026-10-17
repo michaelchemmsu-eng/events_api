@@ -17,7 +17,7 @@ namespace project.Services
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(3), stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
                     var pendingBookings = _bookingRepository.GetPending().ToList();
                     var tasks = pendingBookings.Select(booking => ProcessBookingAsync(booking, stoppingToken));
                     await Task.WhenAll(tasks);
@@ -110,7 +110,7 @@ namespace project.Services
                 var BookingDto = new BookingDto
                 {
                     Status = booking.Status,
-                    ProcessedAt = DateTime.UtcNow
+                    ProcessedAt = booking.ProcessedAt
                 };
                 //обновление статуса бронирования 
                 try

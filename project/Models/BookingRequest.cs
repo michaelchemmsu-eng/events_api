@@ -11,7 +11,7 @@ namespace project.Models
         /// <summary>
         /// идентификатор события, к которому относится бронирование в запросе
         /// </summary>
-        [Required (ErrorMessage ="Event Id is required")]
+       
         public Guid EventId { get; set; } // идентификатор события, к которому относится бронирование
 
     }

@@ -9,13 +9,19 @@ namespace project.Models
         /// <summary>
         /// общее число событий
         /// </summary>
-        [Required(ErrorMessage = "total event count is required")]
+     
         public int totalEvents { get; set; }
-        [Required(ErrorMessage = "event array is required")]
+        /// <summary>
+        /// массив EventResponse на странице результата
+        /// </summary>
         public EventResponse[] eventArray { get; set; } = [];
-        [Required(ErrorMessage = "current page is required")]
+        /// <summary>
+        /// номер страницы
+        /// </summary>
         public int currentPage { get; set; }
-        [Required(ErrorMessage = "page size of current page is required")]
+        /// <summary>
+        /// размер страницы
+        /// </summary>
         public int pageSizeOfCurrentPage { get; set; }
 
         

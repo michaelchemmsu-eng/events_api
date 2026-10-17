@@ -18,7 +18,7 @@ namespace project.Services
         private readonly IBookingRepository _bookingStorage;
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
-        private readonly object _bookingLock = new(); // для защиты критической сексс 
+        private readonly object _bookingLock = new(); // для защиты критической секции 
         public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService) 
         {
             _bookingStorage = BookingStorage;
@@ -63,12 +63,12 @@ namespace project.Services
                 }
                 catch (NoAvailableSeatsException ex) 
                 {
-                    _logger.LogError(ex, "Ошибка при создании бронирования для события {EventId}: нет доступных мест для резервирования", eventId);
+                    _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}: нет доступных мест для резервирования", eventId);
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
+                    _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
                     throw;
                 }
             }

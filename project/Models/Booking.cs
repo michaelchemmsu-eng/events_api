@@ -32,7 +32,11 @@
         public void Confirm() 
         {
             if (this.Status == BookingStatus.Pending)
+                
+            { 
                 this.Status = BookingStatus.Confirmed;
+                this.ProcessedAt = DateTime.UtcNow;
+            }
         }
 
         /// <summary>
@@ -41,7 +45,9 @@
         public void Reject()
         {
             if (this.Status == BookingStatus.Pending)
-                this.Status = BookingStatus.Rejected;
+                { this.Status = BookingStatus.Rejected;
+                this.ProcessedAt = DateTime.UtcNow;
+            }
         }
 
     }

@@ -27,14 +27,14 @@ namespace project.Services
             int pageSize = 10
             )
         {
-            if (page < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
-            }
-            if (pageSize < 1 || pageSize > 100)
-            {
-                throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
-            }
+            //if (page < 1)
+            //{
+            //    throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
+            //}
+            //if (pageSize < 1 || pageSize > 100)
+            //{
+            //    throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
+            //}
 
             var query = _events.Values.AsEnumerable();
 
@@ -210,7 +210,11 @@ namespace project.Services
 
         }
 
-
+        /// <summary>
+        /// метод удаления события из хранилища
+        /// </summary>
+        /// <param name="id">Id события</param>
+        /// <exception cref="KeyNotFoundException"></exception>
         public void DeleteEvent(Guid id) 
         {
             if (!_events.TryRemove(id, out Event? obj))

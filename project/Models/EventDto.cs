@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 namespace project.Models
 {
     /// <summary>
-    /// базовый класс модели Event
+    /// базовый класс модели EventDto
     /// </summary>
 
     public class EventDto: IValidatableObject

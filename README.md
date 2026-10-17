@@ -53,23 +53,26 @@ dotnet run --project project
 - string title  -- Поиск по названию события
 - DateTime from -- Фильтр по дате: события, которые начинаются не раньше указанной даты (StartAt >= from)
 - DateTime to -- Фильтр по дате: события, которые заканчиваются не позже указанной даты (EndAt <= to)
-- int page -- Номер страницы (по умолчанию: 1)
-- int pageSize -- Количество событий на странице (по умолчанию: 10)
+- int page -- Номер страницы (по умолчанию: 1), фильтрация по значению: page должен быть больше нуля
+- int pageSize -- Количество событий на странице (по умолчанию: 10),  фильтрация по значению: pageSize должен лежать в диапазоне [1,100]
 
 примеры запросов:
 - GET /api/events?title=тайтл
 - GET /api/events?from=2025-06-01T00:00:00Z&to=2025-06-30T23:59:59Z
 - GET /api/events?page=2&pageSize=5
 
-## Формат ответа при ошибках
+## Формат ответа запроса при стандартных значениях параметров
 ```JSON
 {
-  "title": "Resourse not found",
-  "status": 404,
-  "detail": "Событие с идентификатором '3fa85f64-5717-4562-b3fc-2c963f66afa6' не найдено.",
-  "instance": "/api/Events/3fa85f64-5717-4562-b3fc-2c963f66afa6"
+  "totalEvents": 0,
+  "eventArray": [],
+  "currentPage": 1,
+  "pageSizeOfCurrentPage": 0
 }
 ```
+
+
+
 
 
 
@@ -80,11 +83,12 @@ dotnet run --project project
 
 
 ## Создание бронирования для события c идентициактором eventId (`POST /events/{eventId}/book`)
-- Метод создания бронирования поддерживает параметр eventId типа Guid - идентификатор события, для которого создается бронирование.
+- Метод создания бронирования поддерживает параметр eventId типа Guid - идентификатор события, для которого создается бронирование. возвращает 202 Accepted;  
+- теле ответа возвращает информацию о созданной брони (включая Id, EventId, Status);
+- в заголовке Location возвращает ссылку на ресурс брони (например, /bookings/{bookingId});
 пример запроса:
 - POST /events/3fa85f64-5717-4562-b3fc-2c963f66afa6/book
-
-## формат ответа при ошибках "события не найдено"
+### формат ответа при ошибке "события не найдено" (KeyNotFoundException)
 ``` JSON
 {
   "title": "Событие не найдено",
@@ -92,11 +96,7 @@ dotnet run --project project
   "detail": "Событие с Id 3fa85f64-5717-4562-b3fc-2c963f66afa6 не найдено"
 }
 ```
-** Response headers **
- `content-type: application/problem+json; charset=utf-8 
- date: Thu,08 Oct 2026 07:07:52 GMT 
- server: Kestrel` 
-## формат ответа при ошибках "No available seats for the Event"
+### формат ответа при ошибках "No available seats for the Event"
 ``` JSON
 {
   "title": "Incorrect request incoming parameter value",
@@ -105,8 +105,7 @@ dotnet run --project project
   "instance": "/events/826d41e3-7e06-4115-a253-4c836583d98a/book"
 }
 ```
-
- ## формат ответа при успешном создании бронирования
+ ### формат ответа при успешном создании бронирования
  ``` JSON
  {
   "id": "ba45e8c6-d038-4f2a-ac18-3081288cbda1",
@@ -114,11 +113,14 @@ dotnet run --project project
   "status": "Pending"
 }
  ```
-** Response headers **
- `content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:11:32 GMT 
- location: /bookings/ba45e8c6-d038-4f2a-ac18-3081288cbda1 
- server: Kestrel`
+
+
+
+
+
+
+
+
 
 
 
@@ -143,13 +145,7 @@ dotnet run --project project
   "endAt": "2026-10-08T07:11:04.25Z"
 }
 ```
-**Response headers**
-`content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:15:54 GMT 
- server: Kestrel`
-
 * **ответ в случае отсутствия события:** `404 OK`
-* **Тело ответа:**
 ```json
 {
   "title": "Resourse not found",
@@ -158,10 +154,7 @@ dotnet run --project project
   "instance": "/events/d23ae92d-501f-4bd6-8056-a3bb1f36fd0f"
 }
 ```
-**Response headers**
-`content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:20:06 GMT 
- server: Kestrel `
+
 
 
 
@@ -172,6 +165,9 @@ dotnet run --project project
 
 
 ## POST /events — создать событие, возвращать корректный HTTP-ответ (например, 201)
+-> метод контроллера CreateEvent([FromBody] EventDto eventDto)
+    -> метод сервиса событий CreateEvent(EventDto eventDto)
+        -> фабричный метод Event Create(EventDto eventDto)
 * **Тело запроса:**
 ```json
 {
@@ -203,8 +199,6 @@ dotnet run --project project
   "availableSeats": 150
 }
 ```
-
-
 * **Неуспешный ответ (валидация):** `400 Bad Request`
 * **Тело запроса**
 ```JSON
@@ -255,10 +249,6 @@ dotnet run --project project
   "message": "Событие С Id d33ae92d-501f-4bd6-8056-a3bb1f36fd0f успешно обновлено"
 }
 ```
-**Response headers**
-`content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:35:51 GMT 
- server: Kestrel `
 * **ответ в случае ошибки - отсутсвие события:** `404 Not Found`
 * **Тело ответа:**
 ```json
@@ -269,10 +259,7 @@ dotnet run --project project
   "instance": "/events/d32ae92d-501f-4bd6-8056-a3bb1f36fd0f"
 }
 ```
-**Response headers**
-` content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:38:13 GMT 
- server: Kestrel  `
+
 
 
 
@@ -296,10 +283,6 @@ dotnet run --project project
   "message": "Событие С Id d33ae92d-501f-4bd6-8056-a3bb1f36fd0f успешно удалено"
 }
 ```
-**Response headers**
-`content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:40:13 GMT 
- server: Kestrel  `
 * **ответ в случае ошибки - отсутсвие события:** `404 Not Found`
 * **Тело ответа:**
 ```json
@@ -310,10 +293,7 @@ dotnet run --project project
   "instance": "/events/d33ae92d-501f-4bd6-8056-a3bb1f36fd0f"
 }
 ```
-**Response headers**
-`content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:40:51 GMT 
- server: Kestrel  `
+
 
 
 
@@ -346,11 +326,8 @@ dotnet run --project project
   "status": 2
 }
 ```
-
-**Response headers**
-`content-type: application/json; charset=utf-8 
- date: Thu,08 Oct 2026 07:47:27 GMT 
- server: Kestrel `
+если в процессе работы фонового процесса обработки бронирования возникла исключительные события, например, событие было удалено, нет свободных мест на текущее событие, или другие ошибки,
+то статус обекта бронирования изменить на 3 (Rejected).
 * **ответ в случае ошибки - отсутсвие бронирования:** `404 Not Found`
 * **Тело ответа:**
 ```json
@@ -361,36 +338,131 @@ dotnet run --project project
   "instance": "/bookings/33e5c5f9-af6e-4d05-97a0-f728170bcecb"
 }
 ```
-**Response headers**
-`content-type: application/problem+json; charset=utf-8 
- date: Thu,08 Oct 2026 07:50:08 GMT 
- server: Kestrel`
 
 
 
 
 
-
-## реализована модель Booking - сущность бронирования события
+## Модели (папка Models):
+### модель Booking - сущность бронирования события
 **Состав полей:**
-- Id (Guid, обязательное) — уникальный идентификатор брони;
+- Id (Guid, обязательное) — уникальный идентификатор брони; Система генерирует id при создании бронирования
 - EventId (Guid, обязательное) — идентификатор события, к которому относится бронь;
 - Status (BookingStatus, обязательное) — текущий статус брони;
 - CreatedAt (DateTime, обязательное) — дата и время создания брони;
 - ProcessedAt (DateTime?, опциональное) — дата и время обработки брони.
+- public void Confirm() - метод меняет Status со значением Pending в Status со значнием Confirmed, фиксирует время изменения статуса в свойстве ProcessedAt
+- public void Reject() - метод меняет Status со значением Pending в Status со значнием Rejected, фиксирует время изменения статуса в свойстве ProcessedAt
+
+### модель enum BookingStatus со значениями:
+- Pending = 1  — бронь создана, ожидает обработки;
+- Confirmed = 2 — бронь подтверждена;
+- Rejected = 3 — бронь отклонена.
+
+### модель BookingDto - используется для передачи данных о бронировании при обновлении в хранилище бронирований
+** Состав полей: ** 
+- BookingStatus Status - аналогично полю Booking
+- DateTime? ProcessedAt - аналогично полю Booking
+
+### модель BookingRequest - используется при создании бронирования в хранилище бронирований в классе InMemoryBookingDictionary в методе CreateBooking(BookingRequest bookingRequest)
+** Состав полей: ** 
+- EventId (Guid) — идентификатор события, к которому относится бронь;
+
+### модель BookingResponse - используется как модель возврата объекта брони из хранилища в методе контроллера CreateBookingAsync(Guid eventId), в методе сервиса бронирования GetBookingByIdAsync(Guid bookingId) 
+** Состав полей: **
+- BookingId (Guid) - уникальный id объекта бронирования в хранилище бронировний
+- EventId (Guid) - идентификатор события, к которому относится бронь;
+- Status (BookingStatus) — текущий статус брони;
 
 
-- глобальная обработка ошибок через кастомный Middleware.
+### модель Event - сущность события
+** Состав полей: **
+- Guid Id - уникальный идентификатор события в хранилище событий 
+- string Title - заголовок события 
+- string? Description - описание события
+- DateTime StartAt - дата и время начала события
+- DateTime EndAt - дата и время окончания события
+- int TotalSeats - общее число мест события
+- int AvailableSeats - число совободных мест 
+- Event Create(EventDto eventDto) - фабричный метод создания события, валидирует обязательное поле TotalSeats : значение должно быть > 0 
+- bool TryReserveSeats(int count = 1) - метод резервирования мест. Если свободных место AvailableSeats достаточно для резервирования запрошенного количества, то возвращается true
+- void ReleaseSeats(int count = 1) - метод отката резервирования запрошенного количества мест.
+
+### модель EventDto - используется как модель входных данных в методе CreateEvent([FromBody] EventDto eventDto) контроллера, в методе CreateEvent(EventDto eventDto) сервиса событий
+** Состав полей: **
+- string Title - заголовок события, обязательное поле (required) 
+- string? Description - описание события, необязательное поле 
+- DateTime StartAt - дата и время начала события, обязательное поле (required) 
+- DateTime EndAt - дата и время окончания события, обязательное поле (required) 
+- int TotalSeats - общее число мест события, обязательное поле (required) 
+Реализует IValidatableObject, для валидирования StartAt и EndAt в привязке: Дата начала события должна быть меньше даты окончания события
+
+### модель EventResponse - используется как модель возврата объекта события из хранилища событий в сервисе событий в методе GetEventResponseById(Guid id) - метод для контролеров, в методе сервиса Событий CreateEvent(EventDto eventDto), в методе PaginatedResult GetAllEvents 
+** Состав полей: **
+- Guid Id - уникальный идентификатор события в хранилище событий 
+- string Title - заголовок события 
+- string? Description - описание события
+- DateTime StartAt - дата и время начала события
+- DateTime EndAt - дата и время окончания события
+- int TotalSeats - общее число мест события
+- int AvailableSeats - число совободных мест
+
+### модель PaginatedResult - модель возврата пагинированных событий из хранилища событий
+** Состав полей: **
+- int totalEvents - число событий на странице результата
+- EventResponse[] eventArray - массив EventResponse на странице результата
+- int currentPage - номер страницы
+- int pageSizeOfCurrentPage - размер страницы
+
+
+
+
+# Сервисы
+## Сервис событий EventService
+- ConcurrentDictionary<Guid,Event> _events - хранилище событий
+- Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) - асинхронный метод для проверки сущещствования объекта события с Id. Метод иммитирует обращение к БД и принимает токен отмены. Возвращает булево значение
+- PaginatedResult GetAllEvents(string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10) - метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
+        по заголовку (title), по Дате и времени начала события (from), по дате и времени окончания события (to), из отфильтрованной коллекции возвращает страницу с номером page, где каждая страница -- размера pageSize. По умолчанию
+        page = 1 , pageSize = 10
+- EventResponse GetEventResponseById(Guid id) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
+- Event GetEventById(Guid id) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
+- EventResponse CreateEvent(EventDto eventDto)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
+- void UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto. метод для контроллеров.
+- void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
+- void DeleteEvent(Guid id) - метод удаления события.
+## Сервис бронирований BookingService
+- private readonly IBookingRepository _bookingStorage - объект хранилища объектов бронирований
+- private readonly IEventService _eventService - сервис событий
+- private readonly object _bookingLock = new() - объект для синхронизации для защиты критической секции 
+- Task<BookingResponse> CreateBookingAsync(Guid eventId) - асинхронный метод создания бронирования. для защиты критической секции использует объект _bookingLock. критическая секция: проверка существования события с помощью _eventService, резервирование билетов на событие
+        выбрасывает исключение KeyNotFoundException в случае отсутсвия события с переданным Id. Выбрасывает исключение NoAvailableSeatsException, если нет доступных мест для резервирования.
+- Task<BookingResponse> GetBookingByIdAsync(Guid bookingId) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
+## Сервис фоновой обработки бронирований BookingBackgroundService
+- IBookingRepository _bookingRepository - хранилище бронирований
+- IEventService _eventRepository - хранилище событий, сервис событий
+- SemaphoreSlim _processingSemaphore = new(1, 1) - семафор для защиты критической секции. Критическая секция: проверка существования события бронирования, обработка бронирования, обновление объекта события в хранилище событий, обновление объекта бронирования в хранилище бронирований.
+- Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken) - асинхронный метод обработки одной брони. Обрабатывает следующие исключения: OperationCanceledException, ошибки обновления объекта бронирования 
+- Task ExecuteAsync(CancellationToken stoppingToken) - обрабатывает асинхронно все объекты бронирования со статусом Pending. Меняет статус броинрования с Pending на Confirmed или Reejcted.
+## Хранилище броинирований.
+- ConcurrentDictionary<Guid, Booking> _bookings = new() - словарь для хранения объектов бронирований
+- IEnumerable<Booking> GetPending() - метод возвращает все объекты бронирований со статусов Pending
+- BookingResponse[] GetAllBookings() - метод возварщает все объекты броинрований из хранилища. Если в хранилище пустое, то возварщает пустой массив.
+- PaginatedResultBookings GetAllBookingsPaginated - метод, аналогичный методу PaginatedResult GetAllEvents в EventService
+- BookingResponse GetBookingById(Guid bookingId) - метод возвращает объект бронирования из хранилища по его Id. Выбрасывает KeyNotFoundException, если объекта bookingId нет в хранилище
+- void UpdateBooking(Guid bookingId, BookingDto bookingDto) - метод обновляет объект бронирования с Id = bookingId данными из bookingDto.
+- void DeleteBooking(Guid bookingId) - удаляет объект с id= bookingId из хранилища, выбрасывает KeyNotFoundException, если объекта с bookingId нет в хранилище
+- BookingResponse CreateBooking(BookingRequest bookingRequest) - создает объект бронирования в хранилище с уникальным Id, возвращает объект с информацией о созданном бронировании. 
+
+
+## глобальная обработка ошибок через кастомный Middleware.
 - Все ошибки возвращаются в стандартизированном JSON-формате по спецификации Problem Details:
 - 400 Bad Request — ошибки валидации входных данных
 - 404 Not Found — запрашиваемое событие с указанным id не найдено
 - 500 Internal Server Error — непредвиденные сбои на стороне сервера
 
 
-## текушие статусы бронирования события в enum BookingStatus со значениями:
-- Pending = 1  — бронь создана, ожидает обработки;
-- Confirmed = 2 — бронь подтверждена;
-- Rejected = 3 — бронь отклонена.
+
+
 
 ## пример сценария использования
 запрос на создание бронирования события с Id 317f1592-9109-4050-a6ea-a8ada60dcaf0:

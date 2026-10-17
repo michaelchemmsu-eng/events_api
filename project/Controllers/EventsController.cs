@@ -47,6 +47,7 @@ namespace project.Controllers
         /// <param name="eventId">Id события</param>
         /// <returns></returns>
         [HttpPost("{eventId}/book")]
+        [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
         public async Task <ActionResult<BookingResponse>> CreateBookingAsync(Guid eventId) 
         {
             /*
