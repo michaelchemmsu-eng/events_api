@@ -40,6 +40,11 @@ namespace project.Services
             // а место — вернуться в пул.
             _logger.LogInformation($"Процесс обработки бронирования {booking.Id}");
 
+
+            
+            if (stoppingToken.IsCancellationRequested)
+                return;
+
             await Task.Delay(TimeSpan.FromSeconds(2),stoppingToken);
 
             await _processingSemaphore.WaitAsync(stoppingToken);
@@ -60,59 +65,13 @@ namespace project.Services
                     _logger.LogWarning("Бронирование {BookingId} отклонено: событие не найдено", booking.Id);
 
                 }
-               
-
-            }
-            catch (Exception ex)
-            {
-
-                booking.Reject();
-
-
-
-
-                switch (ex) 
-                {
-                    case OperationCanceledException operationCanceledException:
-                        _logger.LogInformation($"обработка бронирования {booking.Id} отменена");
-                        break;
-                    default:
-                        _logger.LogError(ex, "Ошибка при обработке брони {BookingId}", booking.Id); break;
-
-                }
-
-
-
-
-
-
-
-                //откат. возвращаем место в пул: получаем по Id Event ev, делаем ev.Release(), обновляем в БД
-                //здесь проблема : вызываемые методы могу сами бросить исключения
-                try
-                {
-                    Event ev = _eventRepository.GetEventById(booking.EventId);
-                    ev.ReleaseSeats();
-                    _eventRepository.UpdateEventById(booking.EventId, ev);
-                }
-                catch (Exception rollBackException) 
-                {
-                    _logger.LogError(rollBackException, "Событие не удалось вернуть. ошибка получения события {EventId}",booking.EventId);
-
-                }
-                
-              
-
-                
-            }
-            finally
-            {
+                //обновляем статус брони на Confirm или Reject из-за отсутствия события
+                //сохраняем статус реджектед для 
                 var BookingDto = new BookingDto
                 {
                     Status = booking.Status,
                     ProcessedAt = booking.ProcessedAt
                 };
-                //обновление статуса бронирования 
                 try
                 {
                     _bookingRepository.UpdateBooking(booking.Id, BookingDto);
@@ -124,11 +83,65 @@ namespace project.Services
                     _logger.LogError(updateException, "Не удалось обновить статус брони {BookingId}", booking.Id);
                 }
 
-                finally
+
+            }
+
+
+            //в случае OperationCanceledException -- без reject() и отката
+            catch (OperationCanceledException ex) 
+            {
+                _logger.LogInformation($"обработка бронирования {booking.Id} отменена");
+                throw;
+            }
+
+
+            //другие ошибки приводят к reject() и откату бронировния
+            catch (Exception ex)
+            {
+
+                booking.Reject();
+
+                 _logger.LogError(ex, "Ошибка при обработке брони {BookingId}", booking.Id); 
+
+                
+
+                //откат. возвращаем место в пул: получаем по Id Event ev, делаем ev.Release(), обновляем в БД
+                //здесь проблема : вызываемые методы могу сами бросить исключения
+                try
                 {
-                    _processingSemaphore.Release();
+                    Event ev = _eventRepository.GetEventById(booking.EventId);
+                    ev.ReleaseSeats();
+                    _eventRepository.UpdateEventById(booking.EventId, ev);
+                }
+                catch (Exception rollBackException)
+                {
+                    _logger.LogError(rollBackException, "Событие не удалось вернуть. ошибка получения события {EventId}", booking.EventId);
 
                 }
+
+                //сохраняем статус реджектед для 
+                var BookingDto = new BookingDto
+                {
+                    Status = booking.Status,
+                    ProcessedAt = booking.ProcessedAt
+                };
+                try
+                {
+                    _bookingRepository.UpdateBooking(booking.Id, BookingDto);
+
+                }
+
+                catch (Exception updateException)
+                {
+                    _logger.LogError(updateException, "Не удалось обновить статус брони {BookingId}", booking.Id);
+                }
+
+
+            }
+            finally
+            {
+                
+                 _processingSemaphore.Release();
 
             }
 
