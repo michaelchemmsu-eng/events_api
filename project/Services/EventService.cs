@@ -27,14 +27,14 @@ namespace project.Services
             int pageSize = 10
             )
         {
-            //if (page < 1)
-            //{
-            //    throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
-            //}
-            //if (pageSize < 1 || pageSize > 100)
-            //{
-            //    throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
-            //}
+            if (page < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
+            }
+            if (pageSize < 1 || pageSize > 100)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
+            }
 
             var query = _events.Values.AsEnumerable();
 
@@ -151,8 +151,8 @@ namespace project.Services
                 Title = eventDto.Title!,//Title is annotated with required
                 Description = eventDto.Description,
                 StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
-                EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
-
+                EndAt = eventDto.EndAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
+                TotalSeats = eventDto.TotalSeats!.Value//TotalSeats -обязательное поле
             };
             while (true) 
             {
