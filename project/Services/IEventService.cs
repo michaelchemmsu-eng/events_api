@@ -65,5 +65,19 @@ namespace project.Services
         // проверка события по Id на наличие в репозитории -- это обращение к БД. Поэтому асинхронная функция
         Task<bool> IsExistInRepositoryAsync(Guid Id, CancellationToken ct);
 
+        /// <summary>
+        /// атомарно резервирует одно место для события.
+        /// метод принимает Id события - идентификатоор события, на которое получен запрос бронирования.
+        /// </summary>
+        /// <param name="evenId">идентификатоор события</param>
+        /// <returns></returns>
+        Task TryReserveSeats(Guid evenId);
+        /// <summary>
+        /// атомарно откатывает бронирование -- возвращает место 
+        /// </summary>
+        /// <param name="eventId"></param>
+        /// <returns></returns>
+        Task ReleaseSeatAsync(Guid eventId);
+
     }
 }

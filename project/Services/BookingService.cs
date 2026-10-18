@@ -36,42 +36,34 @@ namespace project.Services
         /// <exception cref="NoAvailableSeatsException"></exception>
         public async Task<BookingResponse> CreateBookingAsync(Guid eventId) 
         {
-            //чтение из "БД" оставим в lock , чтобы не было overbooking
-            //проблема: бронирование на другие события в других  потоках встанут в очередь
-            //проблема: если читать асинхронно из "БД", то ошибка компиляции 
-            lock (_bookingLock) 
+            /*
+             * поступает запрос из нескольких потоков на один и тот же eventId
+             * обращаемся к усулге ивент сервис 
+             * 
+             */
+           
+            try
             {
-                try
-                {
-                    // проверяем, что событие существует, если нет, то выбрасывается исключение KeyNotFoundException
-                    var Event = _eventService.GetEventById(eventId);
+                await _eventService.TryReserveSeats(eventId);//либо успешно резервирует, либо бросает исключение
 
-                    if (!Event.TryReserveSeats())
-                    {
-                        throw new NoAvailableSeatsException($"No available seats for the Event {eventId}");
-                    }
-
-                    //обновляем объект события после изменения этого объекта в "БД"
-                  
-                    _eventService.UpdateEventById(eventId, Event);
-                    //создаем объект бронирования через репозиторий
-                    return _bookingStorage.CreateBooking(new BookingRequest { EventId = eventId });
-                }
-                catch (KeyNotFoundException)
-                {
-                    throw;
-                }
-                catch (NoAvailableSeatsException ex) 
-                {
-                    _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}: нет доступных мест для резервирования", eventId);
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
-                    throw;
-                }
+                //создаем объект бронирования через репозиторий
+                return _bookingStorage.CreateBooking(new BookingRequest { EventId = eventId });
             }
+            catch (KeyNotFoundException)
+            {
+                throw;
+            }
+            catch (NoAvailableSeatsException ex) 
+            {
+                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}: нет доступных мест для резервирования", eventId);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
+                throw;
+            }
+            
             
 
         }

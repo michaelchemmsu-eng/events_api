@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
+﻿using Castle.Core.Logging;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
+using project.CustomExceptions;
 using project.Models;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
@@ -10,6 +12,21 @@ namespace project.Services
     public class EventService:IEventService
     {
         private ConcurrentDictionary<Guid,Event> _events = new();
+        //словарь семафоров по eventId
+        private ConcurrentDictionary<Guid, SemaphoreSlim> _semaphoreOfEventId = new();
+        // алгоритм такой:
+        /*
+         * для Букинг сервиса 
+         * несколько потоков отправляют запрос на создание букинга по eventId
+         * все потоки обращаются к сервису событий на резервирование одного билета на один и тот же eventId
+         *  и все эти потоки вызывают функцию TryReserveAsync (eventId)
+         *  поток в методе TryReserveAsync (eventId): 
+         *  захватывает семафор по eventId, проверяет есть ли это событие вообще в хранилище событий
+         *  если нет, то бросить исключение
+         *  если есть, то получает это событие Event, вызывает TryReserveSeats
+         *  если мест не осталось, то бросаем исключение, если есть то минус одно место в AvailableSeats в объекте
+         *  обновить событие в хранилище событий 
+         */
 
         public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) 
         {
@@ -17,6 +34,65 @@ namespace project.Services
             await Task.Delay(500,ct);  
             return _events.ContainsKey(id);
         }
+
+
+        //метод для фонового процесса. метод отката
+        public async Task ReleaseSeatAsync(Guid eventId) 
+        {
+            var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
+            try
+            {
+                await sempahore.WaitAsync();
+                if (!_events.TryGetValue(eventId, out Event? existingEvent))
+                {
+                    throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
+                }
+                existingEvent.ReleaseSeats();
+                //одновить событие в хранилище
+                _events[eventId] = existingEvent;
+
+            }
+            catch (Exception) 
+            {
+                throw;
+            }
+            finally
+            {
+                sempahore.Release();
+            }
+
+
+        }
+
+
+
+
+
+        public async Task TryReserveSeats(Guid eventId) 
+        {
+            var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
+            await sempahore.WaitAsync();
+
+            try
+            {
+                if (!_events.TryGetValue(eventId, out Event? existingEvent))
+                {
+                    throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
+                }
+                if (!existingEvent.TryReserveSeats()) 
+                {
+                    throw new NoAvailableSeatsException($"Нет доступных мест на событие с Id {eventId}");
+                }
+                //одновить событие в хранилище
+                _events[eventId] = existingEvent;
+
+            }
+            finally 
+            {
+                sempahore.Release();
+            }
+        }
+
 
 
         public PaginatedResult GetAllEvents(

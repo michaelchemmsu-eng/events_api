@@ -420,6 +420,7 @@ dotnet run --project project
 # Сервисы
 ## Сервис событий EventService
 - ConcurrentDictionary<Guid,Event> _events - хранилище событий
+- ConcurrentDictionary<Guid, SemaphoreSlim> _semaphoreOfEventId = new(); - словарь семафоров с ключами-идентификаторами событий. Для атомарного резервирования места по Id события в букинг-сервисе и для атомарного отката события при возникновении ошибки во время обработки букинга в фоновом процессе
 - Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) - асинхронный метод для проверки сущещствования объекта события с Id. Метод иммитирует обращение к БД и принимает токен отмены. Возвращает булево значение
 - PaginatedResult GetAllEvents(string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10) - метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
         по заголовку (title), по Дате и времени начала события (from), по дате и времени окончания события (to), из отфильтрованной коллекции возвращает страницу с номером page, где каждая страница -- размера pageSize. По умолчанию
@@ -430,6 +431,8 @@ dotnet run --project project
 - void UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto. метод для контроллеров.
 - void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
 - void DeleteEvent(Guid id) - метод удаления события.
+- async Task ReleaseSeatAsync(Guid eventId) - метод для фонового процесса. метод отката.
+- async Task TryReserveSeats(Guid eventId) - атомарно резервирует одно место для события для букинг-сервиса.
 ## Сервис бронирований BookingService
 - private readonly IBookingRepository _bookingStorage - объект хранилища объектов бронирований
 - private readonly IEventService _eventService - сервис событий

@@ -104,22 +104,26 @@ namespace project.Services
 
                 booking.Reject();
 
-                 _logger.LogError(ex, "Ошибка при обработке брони {BookingId}", booking.Id); 
+                 _logger.LogError(ex, "Ошибка при обработке брони {BookingId}. Откат события и обновление бронирования...", booking.Id); 
 
                 
 
-                //откат. возвращаем место в пул: получаем по Id Event ev, делаем ev.Release(), обновляем в БД
-                //здесь проблема : вызываемые методы могу сами бросить исключения
+                //откат. возвращаем место в пул:
                 try
                 {
-                    Event ev = _eventRepository.GetEventById(booking.EventId);
-                    ev.ReleaseSeats();
-                    _eventRepository.UpdateEventById(booking.EventId, ev);
+                    await _eventRepository.ReleaseSeatAsync(booking.EventId); //
                 }
                 catch (Exception rollBackException)
                 {
-                    _logger.LogError(rollBackException, "Событие не удалось вернуть. ошибка получения события {EventId}", booking.EventId);
-
+                    switch( rollBackException )
+                    {
+                        case KeyNotFoundException:
+                            _logger.LogError(rollBackException, "Событие не удалось вернуть. ошибка получения события {EventId}", booking.EventId);
+                            break;
+                        default:
+                            _logger.LogError(rollBackException, "Событие {EventId} не удалось вернуть ", booking.EventId);
+                            break;
+                    }   
                 }
 
                 //сохраняем статус реджектед для 
