@@ -26,7 +26,7 @@ namespace project.Middlewares
                 var (statusCode, title) = ex switch
                 {
                     //404 Not Found для ситуаций, когда ресурс не найден;
-                    KeyNotFoundException => (StatusCodes.Status404NotFound, "Resourse not found"),
+                    KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
 
                     //409 conflict
                     NoAvailableSeatsException => (StatusCodes.Status409Conflict, "Incorrect request incoming parameter value"),

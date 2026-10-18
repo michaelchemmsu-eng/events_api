@@ -148,7 +148,7 @@ dotnet run --project project
 * **ответ в случае отсутствия события:** `404 OK`
 ```json
 {
-  "title": "Resourse not found",
+  "title": "Resource not found",
   "status": 404,
   "detail": "Событие с идентификатором 'd23ae92d-501f-4bd6-8056-a3bb1f36fd0f' не найдено.",
   "instance": "/events/d23ae92d-501f-4bd6-8056-a3bb1f36fd0f"
@@ -213,7 +213,7 @@ dotnet run --project project
 * **Тело ответа:**
 ```JSON
 {
-  "title": "Vallidation Error occurred",
+  "title": "Validation Error occurred",
   "status": 400,
   "instance": "/events",
   "errors": {
@@ -253,7 +253,7 @@ dotnet run --project project
 * **Тело ответа:**
 ```json
 {
-  "title": "Resourse not found",
+  "title": "Resource not found",
   "status": 404,
   "detail": "Событие с идентификатором d32ae92d-501f-4bd6-8056-a3bb1f36fd0f не найдено.",
   "instance": "/events/d32ae92d-501f-4bd6-8056-a3bb1f36fd0f"
@@ -287,7 +287,7 @@ dotnet run --project project
 * **Тело ответа:**
 ```json
 {
-  "title": "Resourse not found",
+  "title": "Resource not found",
   "status": 404,
   "detail": "Событие с идентификатором d33ae92d-501f-4bd6-8056-a3bb1f36fd0f не найдено.",
   "instance": "/events/d33ae92d-501f-4bd6-8056-a3bb1f36fd0f"
