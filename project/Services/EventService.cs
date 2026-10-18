@@ -40,9 +40,10 @@ namespace project.Services
         public async Task ReleaseSeatAsync(Guid eventId) 
         {
             var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
+            await sempahore.WaitAsync();
+
             try
             {
-                await sempahore.WaitAsync();
                 if (!_events.TryGetValue(eventId, out Event? existingEvent))
                 {
                     throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");

@@ -389,11 +389,11 @@ namespace BookingService.Test
                        Description = "Test Description 1",
                        StartAt = DateTime.UtcNow.AddDays(1),
                        EndAt = DateTime.UtcNow.AddDays(3),
-                       TotalSeats = 0
+                       TotalSeats = 1
                    }
                );
+            await _bookingService.CreateBookingAsync(eventResponse.Id);
             var eventResponseId = eventResponse.Id;
-
             //Act & Assert
             NoAvailableSeatsException exception = await Assert.ThrowsAsync<NoAvailableSeatsException>(async () =>
             {
@@ -727,9 +727,7 @@ namespace BookingService.Test
             var TaskList = new List<Task>();
             for (int i = 0; i < NQueries; i++) 
             {
-
-                TaskList.Add(_bookingService.CreateBookingAsync(eventResponse.Id));
-   
+                TaskList.Add(Task.Run(() => _bookingService.CreateBookingAsync(eventResponse.Id)));
             }
             //Дано: событие на totalSeats мест, NQueries конкурентных запросов.
             //Ожидается: ровно totalSeats успешных броней, X — NoAvailableSeatsException, AvailableSeats = Y.
