@@ -8,20 +8,23 @@ namespace project.Services
         ILogger<BookingBackgroundService> _logger): BackgroundService
     {
 
+        private static readonly TimeSpan PollingInterval = TimeSpan.FromSeconds(30);//Интервал опроса хранилища
+        private static readonly TimeSpan ProcessingDelay = TimeSpan.FromSeconds(2);//Задержка обработки одной брони
+
+
         //для защиты записи в хранилище
         private readonly SemaphoreSlim _processingSemaphore = new(1, 1);
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) 
         {
             try
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    //await Task.Delay(ProcessingDelay, stoppingToken);
                     var pendingBookings = _bookingRepository.GetPending().ToList();
                     var tasks = pendingBookings.Select(booking => ProcessBookingAsync(booking, stoppingToken));
                     await Task.WhenAll(tasks);
-                    await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+                    await Task.Delay(PollingInterval, stoppingToken);
                 }
             }
             finally 
@@ -45,7 +48,7 @@ namespace project.Services
             if (stoppingToken.IsCancellationRequested)
                 return;
 
-            await Task.Delay(TimeSpan.FromSeconds(2),stoppingToken);
+            await Task.Delay(ProcessingDelay, stoppingToken);
 
             await _processingSemaphore.WaitAsync(stoppingToken);
             //проверка события по id в репозитории -- это обращение к БД. 
