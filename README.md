@@ -419,6 +419,7 @@ dotnet run --project project
 
 
 # Сервисы
+
 ## Сервис событий EventService
 - ConcurrentDictionary<Guid,Event> _events - хранилище событий
 - ConcurrentDictionary<Guid, SemaphoreSlim> _semaphoreOfEventId = new(); - словарь семафоров с ключами-идентификаторами событий. Для атомарного резервирования места по Id события в букинг-сервисе и для атомарного отката события при возникновении ошибки во время обработки букинга в фоновом процессе
@@ -429,11 +430,14 @@ dotnet run --project project
 - EventResponse GetEventResponseById(Guid id) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
 - Event GetEventById(Guid id) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
 - EventResponse CreateEvent(EventDto eventDto)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
-- void UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto. метод для контроллеров.
+- public async Task UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto,CancellationToken. метод для контроллеров.
 - void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
 - void DeleteEvent(Guid id) - метод удаления события.
 - async Task ReleaseSeatAsync(Guid eventId) - метод для фонового процесса. метод отката.
 - async Task TryReserveSeats(Guid eventId) - атомарно резервирует одно место для события для букинг-сервиса.
+- private AppDbContext _context -- контекс БД.
+
+
 ## Сервис бронирований BookingService
 - private readonly IBookingRepository _bookingStorage - объект хранилища объектов бронирований
 - private readonly IEventService _eventService - сервис событий
@@ -441,6 +445,7 @@ dotnet run --project project
 - Task<BookingResponse> CreateBookingAsync(Guid eventId) - асинхронный метод создания бронирования. для защиты критической секции использует объект _bookingLock. критическая секция: проверка существования события с помощью _eventService, резервирование билетов на событие
         выбрасывает исключение KeyNotFoundException в случае отсутсвия события с переданным Id. Выбрасывает исключение NoAvailableSeatsException, если нет доступных мест для резервирования.
 - Task<BookingResponse> GetBookingByIdAsync(Guid bookingId) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
+
 ## Сервис фоновой обработки бронирований BookingBackgroundService
 - IBookingRepository _bookingRepository - хранилище бронирований
 - IEventService _eventRepository - хранилище событий, сервис событий
@@ -457,10 +462,16 @@ dotnet run --project project
 - void DeleteBooking(Guid bookingId) - удаляет объект с id= bookingId из хранилища, выбрасывает KeyNotFoundException, если объекта с bookingId нет в хранилище
 - BookingResponse CreateBooking(BookingRequest bookingRequest) - создает объект бронирования в хранилище с уникальным Id, возвращает объект с информацией о созданном бронировании. 
 
+# Контекст БД
+- содержит две таблицы: Events и Bookings
+- метод OnModelCreating связывает все конфигурации к контексту.
+- DbContext подключается к провайдеру postgreSQL. Строка подключения -- из appsettings.json. DbContext регистрируется как scoped.
+
+
 
 
 # Конфигурация (DataAccess\Configurations)
-- все конфигурации настроены отдельно от самих сущностей, а подключаются автоматически из сборки.в OnModelCreating
+- все конфигурации настроены отдельно от самих сущностей, а подключаются автоматически из сборки в OnModelCreating
 - конфигурация настроена в EventConfiguration : IEntityTypeConfiguration<Event>
     - Id - PK без генерации значения
     - Title - обязательное поле, с максимальной длиной значения 200

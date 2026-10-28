@@ -1,6 +1,8 @@
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using project.DataAccess;
 using project.Middlewares;
 using project.Services;
 using System.Reflection;
@@ -55,6 +57,8 @@ namespace project
             builder.Services.AddSingleton<IBookingService, BookingService>();
             builder.Services.AddHostedService<BookingBackgroundService>();
 
+            // регистрация контекста
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
 
             builder.Services.AddSingleton<IEventService, project.Services.EventService>();
