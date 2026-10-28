@@ -347,7 +347,7 @@ dotnet run --project project
 ### модель Booking - сущность бронирования события
 **Состав полей:**
 - Id (Guid, обязательное) — уникальный идентификатор брони; Система генерирует id при создании бронирования
-- EventId (Guid, обязательное) — идентификатор события, к которому относится бронь;
+- EventId (Guid, обязательное) — идентификатор события, к которому относится бронь, - суть FK
 - Status (BookingStatus, обязательное) — текущий статус брони;
 - CreatedAt (DateTime, обязательное) — дата и время создания брони;
 - ProcessedAt (DateTime?, опциональное) — дата и время обработки брони.
@@ -387,6 +387,7 @@ dotnet run --project project
 - Event Create(EventDto eventDto) - фабричный метод создания события, валидирует обязательное поле TotalSeats : значение должно быть > 0 
 - bool TryReserveSeats(int count = 1) - метод резервирования мест. Если свободных место AvailableSeats достаточно для резервирования запрошенного количества, то возвращается true
 - void ReleaseSeats(int count = 1) - метод отката резервирования запрошенного количества мест.
+- List<Booking> Bookings - навигационное свойство для связи с сущностью Booking
 
 ### модель EventDto - используется как модель входных данных в методе CreateEvent([FromBody] EventDto eventDto) контроллера, в методе CreateEvent(EventDto eventDto) сервиса событий
 ** Состав полей: **
@@ -455,6 +456,23 @@ dotnet run --project project
 - void UpdateBooking(Guid bookingId, BookingDto bookingDto) - метод обновляет объект бронирования с Id = bookingId данными из bookingDto.
 - void DeleteBooking(Guid bookingId) - удаляет объект с id= bookingId из хранилища, выбрасывает KeyNotFoundException, если объекта с bookingId нет в хранилище
 - BookingResponse CreateBooking(BookingRequest bookingRequest) - создает объект бронирования в хранилище с уникальным Id, возвращает объект с информацией о созданном бронировании. 
+
+
+
+# Конфигурация (DataAccess\Configurations)
+- все конфигурации настроены отдельно от самих сущностей, а подключаются автоматически из сборки.в OnModelCreating
+- конфигурация настроена в EventConfiguration : IEntityTypeConfiguration<Event>
+    - Id - PK без генерации значения
+    - Title - обязательное поле, с максимальной длиной значения 200
+    - Description - необязательное поле с максимальной длиной значения 2000
+    - StartAt - обязательное поле
+    - EndAt - обязательное поле
+    - TotalSeats - обязательное поле
+    - настроена связь с сущностью Bookings 1:N
+- конфигурация настроена в BookingConfiguration : IEntityTypeConfiguration<Booking>
+    - Id - PK без генерации значения
+    - хранение Status как строки в БД
+
 
 
 ## глобальная обработка ошибок через кастомный Middleware.
