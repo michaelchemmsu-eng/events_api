@@ -32,13 +32,14 @@ namespace project.Services
 
         /// <summary>
         /// метод обновления события.
-        /// принимает в качестве параметра Id события для обновления, EventDto 
+        /// принимает в качестве параметра Id события для обновления, EventDto, CancellationToke 
         /// </summary>
         /// <param name="id">ID события</param>
         /// <param name="eventDto">EventDto</param>
+        /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров
-        void UpdateEvent(Guid id, EventDto eventDto);
+        Task UpdateEvent(Guid id, EventDto eventDto,CancellationToken ct = default);
 
         /// <summary>
         /// метод обновления события.

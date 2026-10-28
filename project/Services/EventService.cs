@@ -1,11 +1,10 @@
-﻿using Castle.Core.Logging;
-using Microsoft.AspNetCore.Components.Forms;
-using Microsoft.AspNetCore.Mvc;
+﻿
 using project.CustomExceptions;
+using project.DataAccess;
 using project.Models;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
-using System.Reflection.Metadata.Ecma335;
+using Microsoft.EntityFrameworkCore;
 
 namespace project.Services
 {
@@ -27,6 +26,14 @@ namespace project.Services
          *  если мест не осталось, то бросаем исключение, если есть то минус одно место в AvailableSeats в объекте
          *  обновить событие в хранилище событий 
          */
+
+        private AppDbContext _context;
+
+        public EventService(AppDbContext context) 
+        {
+            _context = context;
+        }
+
 
         public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) 
         {
@@ -213,39 +220,25 @@ namespace project.Services
 
         /// <summary>
         /// метод обновления события.
-        /// принимает в качестве параметра Id события для обновления, EventDto 
+        /// принимает в качестве параметра Id события для обновления, EventDto, CancellationToke 
         /// </summary>
         /// <param name="id">ID события</param>
         /// <param name="eventDto">EventDto</param>
+        /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров
-        public void UpdateEvent(Guid id, EventDto eventDto) 
+        public async Task UpdateEvent(Guid id, EventDto eventDto, CancellationToken ct = default) 
         {
             
-            var updatedEvent = new Event 
+            var existingEvent = await _context.Events.FirstOrDefaultAsync(e => e.Id == id,ct);
+            if (existingEvent is null) 
             {
-                Id = id,
-                Title = eventDto.Title!,//Title is annotated with required
-                Description = eventDto.Description,
-                StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
-                EndAt = eventDto.EndAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
-                TotalSeats = eventDto.TotalSeats!.Value//TotalSeats -обязательное поле
-            };
-            while (true) 
-            {
-                if (!_events.TryGetValue(id,out Event? existingEvent))
-                {
-                    throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
-                }
-                // Атомарная замена
-                // Если за время замены другой поток успел его заменить, 
-                // TryUpdate вернет false, и цикл повторится со свежим existingEvent
-                if (_events.TryUpdate(id, updatedEvent, existingEvent))
-                {
-                    return;
-                }
+                throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
-           
+            
+            _context.Entry(existingEvent).CurrentValues.SetValues(eventDto);//mapping
+            await _context.SaveChangesAsync(ct);
+
         }
 
         /// <summary>

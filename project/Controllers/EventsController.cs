@@ -178,10 +178,10 @@ namespace project.Controllers
         /// <param name="eventDto">DTO для обновления события</param>
         /// <returns></returns>
         [HttpPut("{id}")]
-        public IActionResult UpdateEvent(Guid id, [FromBody] EventDto eventDto) 
+        public async Task <IActionResult> UpdateEvent(Guid id, [FromBody] EventDto eventDto, CancellationToken ct = default) 
         {
             _logger.LogInformation("Обновление события с ID: {EventId}", id);
-            _eventService.UpdateEvent(id, eventDto);//бросит exception, если не найдено событие с таким id
+            await _eventService.UpdateEvent(id, eventDto, ct);
             return Ok(new { message = $"Событие С Id {id} успешно обновлено" });
                
         }
