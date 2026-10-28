@@ -27,7 +27,8 @@ namespace TestProject1
                 Title = "Title1",
                 Description = "Description1",
                 StartAt = DateTime.Now.AddDays(-5),
-                EndAt = DateTime.Now
+                EndAt = DateTime.Now,
+                TotalSeats = 15
             };
             //Act
             var res = _eventService.CreateEvent(eventDto);
@@ -43,6 +44,7 @@ namespace TestProject1
             Assert.Equal(res.Description, eventDto.Description);
             Assert.Equal(res.StartAt, eventDto.StartAt);
             Assert.Equal(res.EndAt, eventDto.EndAt);
+            Assert.Equal(res.TotalSeats, eventDto.TotalSeats);
             //событие сохранилось в словаре
             var eventFromService = _eventService.GetEventById(res.Id);
             Assert.NotNull(eventFromService);
@@ -89,7 +91,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -165,7 +168,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -200,6 +204,7 @@ namespace TestProject1
             // Arrange: хранилище изначально пустое
             var fromFilter = DateTime.UtcNow.AddDays(-5);
             var toFilter = DateTime.UtcNow.AddDays(5);
+            var totalSeats = 15;
 
             // Act
             var result = _eventService.GetAllEvents(null, fromFilter, toFilter);
@@ -219,27 +224,32 @@ namespace TestProject1
             // Границы нашего фильтра от +5 дней до +15 дней
             fromFilter = baseDate.AddDays(5);
             toFilter = baseDate.AddDays(15);
-            
+
             // Событие 1 - слишком рано (StartAt раньше fromFilter)
             _eventService.CreateEvent(new EventDto
             {
                 Title = "Early - Event 1",
                 StartAt = baseDate.AddDays(1),
-                EndAt = baseDate.AddDays(3)
+                EndAt = baseDate.AddDays(3),
+                TotalSeats = totalSeats
             });
             // Событие 2 - внутри диапазона 
             _eventService.CreateEvent(new EventDto
             {
                 Title = "Target - Event 2",
                 StartAt = baseDate.AddDays(6),
-                EndAt = baseDate.AddDays(8)
+                EndAt = baseDate.AddDays(8),
+                TotalSeats = totalSeats
+
             });
             // Событие 3 - внутри диапазона 
             _eventService.CreateEvent(new EventDto
             {
                 Title = "Target - Event 3",
                 StartAt = baseDate.AddDays(7),
-                EndAt = baseDate.AddDays(14)
+                EndAt = baseDate.AddDays(14),
+                TotalSeats = totalSeats
+
             });
 
             // Событие 4 -  внутри диапазона 
@@ -247,7 +257,9 @@ namespace TestProject1
             {
                 Title = "Target - Event 4",
                 StartAt = fromFilter,
-                EndAt = toFilter
+                EndAt = toFilter,
+                TotalSeats = totalSeats
+
             });
 
             // Событие 5 - слишком поздно (EndAt позже toFilter)
@@ -255,7 +267,9 @@ namespace TestProject1
             {
                 Title = "Late Event",
                 StartAt = baseDate.AddDays(10),
-                EndAt = baseDate.AddDays(20) // Вылезает за toFilter (+15)
+                EndAt = baseDate.AddDays(20), // Вылезает за toFilter (+15)
+                TotalSeats = totalSeats
+
             });
 
             // Act
@@ -312,7 +326,9 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
+
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -328,6 +344,7 @@ namespace TestProject1
             Assert.Equal(expectedEventFromStorage.Id, actualEventFromStorage.Id);
             Assert.Equal(expectedEventFromStorage.StartAt, actualEventFromStorage.StartAt);
             Assert.Equal(expectedEventFromStorage.EndAt, actualEventFromStorage.EndAt);
+            Assert.Equal(expectedEventFromStorage.TotalSeats, actualEventFromStorage.TotalSeats);
 
         }
 
@@ -358,7 +375,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -389,7 +407,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -404,7 +423,8 @@ namespace TestProject1
                 Title = "Title123",
                 Description = "Description123",
                 StartAt = DateTime.Now.AddDays(-10),
-                EndAt = DateTime.Now
+                EndAt = DateTime.Now,
+                TotalSeats = 10
             };
 
 
@@ -413,7 +433,7 @@ namespace TestProject1
 
             //Assert
             //проверка модифицированного Event
-            var modifiedEvent = _eventService.GetAllEvents(null, null, null).eventArray[idxOfEventToModify];
+            var modifiedEvent = _eventService.GetEventById(Ids[idxOfEventToModify]);
 
             //Id не должна измениться
             Assert.Equal(modifiedEvent.Id, Ids[idxOfEventToModify]);
@@ -422,6 +442,8 @@ namespace TestProject1
             Assert.Equal(modifiedEvent.StartAt, eventDtoToModify.StartAt);
             Assert.Equal(modifiedEvent.Description, eventDtoToModify.Description);
             Assert.Equal(modifiedEvent.EndAt, eventDtoToModify.EndAt);
+            Assert.Equal(modifiedEvent.TotalSeats, eventDtoToModify.TotalSeats.Value);
+
 
 
         }
@@ -440,7 +462,8 @@ namespace TestProject1
                 Title = "Title123",
                 Description = "Description123",
                 StartAt = DateTime.Now.AddDays(-10),
-                EndAt = DateTime.Now
+                EndAt = DateTime.Now,
+                TotalSeats = 15
             };
 
        
@@ -462,7 +485,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -494,7 +518,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 _eventService.CreateEvent(eventDto);
             }
@@ -537,7 +562,8 @@ namespace TestProject1
                     Title = $"Title{subscripts[i]}",
                     Description = $"Description{subscripts[i]}",
                     StartAt = DateTime.Now.AddDays(-i),
-                    EndAt = DateTime.Now
+                    EndAt = DateTime.Now,
+                    TotalSeats = 15
                 };
                 listOfEventDto.Add(eventDto);
                 _eventService.CreateEvent(eventDto);
@@ -569,16 +595,21 @@ namespace TestProject1
                 string expectedDescription = expectedEventDtos[i].Description;
                 DateTime expectedStartAt = expectedEventDtos[i].StartAt.Value;
                 DateTime expectedEndAt = expectedEventDtos[i].EndAt.Value;
+                int expectedTotalSeats = expectedEventDtos[i].TotalSeats.Value;
+
 
                 string actualTitle = actualPaginatedResults.eventArray[i].Title;
                 string actualDescription = actualPaginatedResults.eventArray[i].Description;
                 DateTime actualStartAt = actualPaginatedResults.eventArray[i].StartAt;
                 DateTime actualEndAt = actualPaginatedResults.eventArray[i].EndAt;
+                int actualTotalSeats = actualPaginatedResults.eventArray[i].TotalSeats;
+
 
                 Assert.Equal(expectedTitle, actualTitle);
                 Assert.Equal(expectedDescription, actualDescription);
                 Assert.Equal(expectedStartAt, actualStartAt);
                 Assert.Equal(expectedEndAt, actualEndAt);
+                Assert.Equal(expectedTotalSeats, actualTotalSeats);
 
             }
 
@@ -602,7 +633,8 @@ namespace TestProject1
             {
                 Title = "DotNet - Meetup - Spring",
                 StartAt = baseDate.AddDays(6),
-                EndAt = baseDate.AddDays(8)
+                EndAt = baseDate.AddDays(8),
+                TotalSeats = 15
             });
 
             // Событие 2 - в диапазоне и название содержит "Meetup" -> должно пройти фильтр
@@ -610,7 +642,9 @@ namespace TestProject1
             {
                 Title = "C# Meetup Online",
                 StartAt = baseDate.AddDays(7),
-                EndAt = baseDate.AddDays(14)
+                EndAt = baseDate.AddDays(14),
+                TotalSeats = 15
+
             });
 
             // Событие 3 - содержит "Meetup", но дата слишком ранняя -> отсеять
@@ -618,7 +652,9 @@ namespace TestProject1
             {
                 Title = "Old Meetup",
                 StartAt = baseDate.AddDays(1),
-                EndAt = baseDate.AddDays(3)
+                EndAt = baseDate.AddDays(3),
+                TotalSeats = 15
+
             });
 
             // Событие 4 - название подходит, но дата слишком поздняя -> отсеять
@@ -626,7 +662,9 @@ namespace TestProject1
             {
                 Title = "Future Meetup",
                 StartAt = baseDate.AddDays(10),
-                EndAt = baseDate.AddDays(25) // Вылезает за toFilter (+15)
+                EndAt = baseDate.AddDays(25), // Вылезает за toFilter (+15)
+                TotalSeats = 15
+
             });
 
             // Событие 5 - даты подходят, но название не содержит "Meetup" -> отсеять
@@ -634,7 +672,9 @@ namespace TestProject1
             {
                 Title = "Java Conference", 
                 StartAt = baseDate.AddDays(7),
-                EndAt = baseDate.AddDays(10)
+                EndAt = baseDate.AddDays(10),
+                TotalSeats = 15
+
             });
 
             // Событие 6 - даты и название не подходят -> отсеять
@@ -642,7 +682,9 @@ namespace TestProject1
             {
                 Title = "Python Course",
                 StartAt = baseDate.AddDays(1),
-                EndAt = baseDate.AddDays(30)
+                EndAt = baseDate.AddDays(30),
+                TotalSeats = 15
+
             });
 
             // Act
@@ -692,7 +734,9 @@ namespace TestProject1
                 Title = "Title1",
                 Description = "Desciption1",
                 StartAt = DateTime.Now,
-                EndAt = DateTime.Now.AddDays(-5)
+                EndAt = DateTime.Now.AddDays(-5),
+                TotalSeats = 15
+
             };
             var validationContext = new ValidationContext(eventDtoIncorret);
             var validationResults = eventDtoIncorret.Validate(validationContext).ToList();

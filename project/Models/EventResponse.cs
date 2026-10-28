@@ -7,10 +7,10 @@ namespace project.Models
     /// </summary>
     public record EventResponse
     {
-        [Required(ErrorMessage = "ID события обязательно")]
+        
 
         public Guid Id { get; set; }
-        [Required(ErrorMessage = "Название события обязательно")]
+       
         public string Title { get; init; }
         /// <summary>
         /// Описание события
@@ -19,12 +19,24 @@ namespace project.Models
         /// <summary>
         /// дата начала события
         /// </summary>
-        [Required(ErrorMessage = "Дата начала события обязательно")]
+      
         public DateTime StartAt { get; init; }
         /// <summary>
         /// дата окончания события
         /// </summary>
-        [Required(ErrorMessage = "Дата окончания события обязательно")]
+  
         public DateTime EndAt { get; init; }
+
+        /// <summary>
+        /// общее число мест на событии
+        /// </summary>
+
+        public int TotalSeats { get; set; }
+
+        /// <summary>
+        /// текущее количество свободных мест 
+        /// </summary>
+        //  при создании равно TotalSeats
+        public int AvailableSeats { get; set; }
     }
 }

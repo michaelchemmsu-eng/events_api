@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
+﻿using Castle.Core.Logging;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
+using project.CustomExceptions;
 using project.Models;
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection.Metadata.Ecma335;
 
 namespace project.Services
@@ -9,6 +12,89 @@ namespace project.Services
     public class EventService:IEventService
     {
         private ConcurrentDictionary<Guid,Event> _events = new();
+        //словарь семафоров по eventId
+        private ConcurrentDictionary<Guid, SemaphoreSlim> _semaphoreOfEventId = new();
+        // алгоритм такой:
+        /*
+         * для Букинг сервиса 
+         * несколько потоков отправляют запрос на создание букинга по eventId
+         * все потоки обращаются к сервису событий на резервирование одного билета на один и тот же eventId
+         *  и все эти потоки вызывают функцию TryReserveAsync (eventId)
+         *  поток в методе TryReserveAsync (eventId): 
+         *  захватывает семафор по eventId, проверяет есть ли это событие вообще в хранилище событий
+         *  если нет, то бросить исключение
+         *  если есть, то получает это событие Event, вызывает TryReserveSeats
+         *  если мест не осталось, то бросаем исключение, если есть то минус одно место в AvailableSeats в объекте
+         *  обновить событие в хранилище событий 
+         */
+
+        public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) 
+        {
+            //иммитация обращения к БД
+            await Task.Delay(500,ct);  
+            return _events.ContainsKey(id);
+        }
+
+
+        //метод для фонового процесса. метод отката
+        public async Task ReleaseSeatAsync(Guid eventId) 
+        {
+            var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
+            await sempahore.WaitAsync();
+
+            try
+            {
+                if (!_events.TryGetValue(eventId, out Event? existingEvent))
+                {
+                    throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
+                }
+                existingEvent.ReleaseSeats();
+                //одновить событие в хранилище
+                _events[eventId] = existingEvent;
+
+            }
+            catch (Exception) 
+            {
+                throw;
+            }
+            finally
+            {
+                sempahore.Release();
+            }
+
+
+        }
+
+
+
+
+
+        public async Task TryReserveSeats(Guid eventId) 
+        {
+            var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
+            await sempahore.WaitAsync();
+
+            try
+            {
+                if (!_events.TryGetValue(eventId, out Event? existingEvent))
+                {
+                    throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
+                }
+                if (!existingEvent.TryReserveSeats()) 
+                {
+                    throw new NoAvailableSeatsException($"Нет доступных мест на событие с Id {eventId}");
+                }
+                //одновить событие в хранилище
+                _events[eventId] = existingEvent;
+
+            }
+            finally 
+            {
+                sempahore.Release();
+            }
+        }
+
+
 
         public PaginatedResult GetAllEvents(
             string? title,
@@ -65,8 +151,17 @@ namespace project.Services
             };
             
         }
-        
-        public EventResponse GetEventById(Guid id)
+
+
+        /// <summary>
+        /// Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id
+        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
+        /// </summary>
+        /// <param name="id">Id события Event</param>
+        /// <returns>EventResponse or throws KeyNotFoundException </returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для контроллеров -- возвращает Dto
+        public EventResponse GetEventResponseById(Guid id)
         {
             //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
             if (!_events.TryGetValue(id, out var retVal))
@@ -76,41 +171,65 @@ namespace project.Services
             return retVal.ToEventResponse();
         }
 
-        //public bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt) 
-        //{
-        //    if (_events.TryGetValue(Id, out _))
-        //    {
-        //        return false;
-        //    }
-        //    _events[Id] = new Event { Id = Id, Title = title, Description = Description, StartAt = StartAt, EndAt = EndAt };
-        //    return true;
-        //}
 
-        public EventResponse CreateEvent(EventDto eventDto) 
+        /// <summary>
+        /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
+        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>Event or throws KeyNotFoundException</returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для бизнес-логики в других сервисах -- возвращает Event
+        public Event GetEventById(Guid id)
         {
-            var newEvent = new Event
+            //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
+            if (!_events.TryGetValue(id, out var retVal))
             {
-                Id = Guid.NewGuid(),
-                Title = eventDto.Title,
-                Description = eventDto.Description,
-                StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
-                EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
-            };
-            _events[newEvent.Id] = newEvent;
-            return newEvent.ToEventResponse();
+                throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
+            }
+            return retVal;
         }
 
 
+        /// <summary>
+        /// метод создания сущности Event.
+        /// </summary>
+        /// <param name="eventDto"></param>
+        /// <returns></returns>
+        public EventResponse CreateEvent(EventDto eventDto) 
+        {
+            try 
+            {
+                var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
+                _events[newEvent.Id] = newEvent;
+                return newEvent.ToEventResponse();
+            }
+            catch (ValidationException ex) 
+            {
+                throw;
+            }
+            
+        }
+
+        /// <summary>
+        /// метод обновления события.
+        /// принимает в качестве параметра Id события для обновления, EventDto 
+        /// </summary>
+        /// <param name="id">ID события</param>
+        /// <param name="eventDto">EventDto</param>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для контроллеров
         public void UpdateEvent(Guid id, EventDto eventDto) 
         {
             
             var updatedEvent = new Event 
             {
                 Id = id,
-                Title = eventDto.Title,
+                Title = eventDto.Title!,//Title is annotated with required
                 Description = eventDto.Description,
                 StartAt = eventDto.StartAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
-                EndAt = eventDto.EndAt!.Value//автоматическая валидация модели EventDto не позволит StartAt быть null
+                EndAt = eventDto.EndAt!.Value,//автоматическая валидация модели EventDto не позволит StartAt быть null
+                TotalSeats = eventDto.TotalSeats!.Value//TotalSeats -обязательное поле
             };
             while (true) 
             {
@@ -129,6 +248,50 @@ namespace project.Services
            
         }
 
+        /// <summary>
+        /// метод обновления события.
+        /// принимает в качестве параметра Id события для обновления, Event 
+        /// </summary>
+        /// <param name="id">ID события</param>
+        /// <param name="Event">Event</param>
+        /// <exception cref="KeyNotFoundException"></exception>
+        // метод для бизнес-логики в других сервисах
+        public void UpdateEventById(Guid id, Event Event)
+        {
+
+            var updatedEvent = new Event
+            {
+                Id = id,
+                Title = Event.Title!,
+                Description = Event.Description,
+                StartAt = Event.StartAt!,
+                EndAt = Event.EndAt!,
+                TotalSeats = Event.TotalSeats,
+                AvailableSeats =Event.AvailableSeats
+
+            };
+            while (true)
+            {
+                if (!_events.TryGetValue(id, out Event? existingEvent))
+                {
+                    throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
+                }
+                // Атомарная замена
+                // Если за время замены другой поток успел его заменить, 
+                // TryUpdate вернет false, и цикл повторится со свежим existingEvent
+                if (_events.TryUpdate(id, updatedEvent, existingEvent))
+                {
+                    return;
+                }
+            }
+
+        }
+
+        /// <summary>
+        /// метод удаления события из хранилища
+        /// </summary>
+        /// <param name="id">Id события</param>
+        /// <exception cref="KeyNotFoundException"></exception>
         public void DeleteEvent(Guid id) 
         {
             if (!_events.TryRemove(id, out Event? obj))

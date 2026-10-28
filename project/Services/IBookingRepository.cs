@@ -64,6 +64,13 @@ namespace project.Services
         /// <returns>BookingResponse с информацией о созданном бронировании</returns>
         BookingResponse CreateBooking(BookingRequest bookingRequest);
 
+        /// <summary>
+        /// Возвращает из хранилища объект IEnumerable с элементами Booking
+        /// которые имеют статус Pending
+        /// </summary>
+        /// <returns>IEnumerable объектов Booking</returns>
+        IEnumerable<Booking> GetPending();
+
 
     }
 }

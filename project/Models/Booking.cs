@@ -26,6 +26,30 @@
         /// </summary>
         public DateTime? ProcessedAt { get; set; }
 
+        /// <summary>
+        /// изменяет статут Pending объекта Booking на статут Confirmed
+        /// </summary>
+        public void Confirm() 
+        {
+            if (this.Status == BookingStatus.Pending)
+                
+            { 
+                this.Status = BookingStatus.Confirmed;
+                this.ProcessedAt = DateTime.UtcNow;
+            }
+        }
+
+        /// <summary>
+        /// изменяет статут Pending объекта Booking на статут Rejected
+        /// </summary>
+        public void Reject()
+        {
+            if (this.Status == BookingStatus.Pending)
+                { this.Status = BookingStatus.Rejected;
+                this.ProcessedAt = DateTime.UtcNow;
+            }
+        }
+
     }
     /// <summary>
     /// Pending — бронь создана, ожидает обработки;

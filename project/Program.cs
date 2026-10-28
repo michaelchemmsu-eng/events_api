@@ -41,7 +41,7 @@ namespace project
 
                     var problemDetails = new ValidationProblemDetails(context.ModelState)
                     {
-                        Title = "Vallidation Error occurred",
+                        Title = "Validation Error occurred",
                         Status = StatusCodes.Status400BadRequest,
                         Instance = path
                     };
