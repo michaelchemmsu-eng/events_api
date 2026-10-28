@@ -843,7 +843,7 @@ namespace BookingService.Test
                 Title = "Title",
                 StartAt = DateTime.UtcNow.AddDays(1),
                 EndAt = DateTime.UtcNow.AddDays(2),
-                TotalSeats = 0
+                TotalSeats = -1
             };
 
             // Act and Assert: проверяем, что выбрасывается ValidationException 
