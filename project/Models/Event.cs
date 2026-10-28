@@ -36,6 +36,18 @@ namespace project.Models
         //  при создании равно TotalSeats
         public int AvailableSeats { get; set; }
 
+        /// <summary>
+        /// навигационное свойство
+        /// </summary>
+        public List<Booking> Bookings { get; set; } = new List<Booking>();
+
+
+        //для EF Core при чтении данных из БД и последующей материализации
+        private Event() 
+        {
+            Title = null!;
+        }
+
 
         /// <summary>
         /// фабричный метод, EventDto - аргумент.

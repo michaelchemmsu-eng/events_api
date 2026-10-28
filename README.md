@@ -13,7 +13,7 @@ RESTful API сервис для управления событиями.
 ### 1. Клонирование репозитория и переход в ветку
 Если репозиторий еще не склонирован:
 ```bash
-git clone -b sprint-4 https://github.com/michaelchemmsu-eng/events_api.git
+git clone -b sprint-5 https://github.com/michaelchemmsu-eng/events_api.git
 cd events_api
 ```
 
