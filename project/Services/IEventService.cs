@@ -31,14 +31,16 @@ namespace project.Services
         // метод для контроллеров -- возвращает Dto
         Task<EventResponse> GetEventResponseById(Guid id, CancellationToken ct = default);
         /// <summary>
+        /// Асинхронный метод.
         /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
-        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
+        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище
         /// </summary>
-        /// <param name="id">Id события Event</param>
-        /// <returns>Event or throws KeyNotFoundException </returns>
+        /// <param name="id">идентификатор сущности</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns>Event or throws KeyNotFoundException</returns>
         /// <exception cref="KeyNotFoundException"></exception>
-        // метод для бизнес-логики в другиз сервисах -- возвращает Event
-        Event GetEventById(Guid id);
+        // метод для бизнес-логики в других сервисах -- возвращает Event
+        Task<Event>GetEventByIdAsync(Guid id);
 
         //создать событие
         //bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt);

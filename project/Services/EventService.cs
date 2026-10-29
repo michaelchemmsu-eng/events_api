@@ -194,21 +194,23 @@ namespace project.Services
 
 
         /// <summary>
+        /// Асинхронный метод.
         /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
         /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище
         /// </summary>
-        /// <param name="id"></param>
+        /// <param name="id">идентификатор сущности</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns>Event or throws KeyNotFoundException</returns>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах -- возвращает Event
-        public Event GetEventById(Guid id)
+        public async Task <Event> GetEventByIdAsync(Guid id, CancellationToken ct = default)
         {
-            //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
-            if (!_events.TryGetValue(id, out var retVal))
+            var EventObj = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
+            if (EventObj is null)
             {
                 throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
             }
-            return retVal;
+            return EventObj;
         }
 
 

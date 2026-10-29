@@ -427,7 +427,7 @@ dotnet run --project project
         по заголовку (title), по Дате и времени начала события (from), по дате и времени окончания события (to), из отфильтрованной коллекции возвращает страницу с номером page, где каждая страница -- размера pageSize. По умолчанию
         page = 1 , pageSize = 10
 - Task<EventResponse> GetEventResponseById(Guid id,CancellationToken ct ) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
-- Event GetEventById(Guid id) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
+- Task<Event> GetEventByIdAsync(Guid id, CancellationToken ct) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
 - EventResponse CreateEvent(EventDto eventDto)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
 - public async Task UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto,CancellationToken. метод для контроллеров.
 - void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
