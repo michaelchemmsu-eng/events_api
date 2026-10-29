@@ -96,7 +96,7 @@ namespace project.Services
         /// </summary>
         /// <param name="evenId">идентификатоор события</param>
         /// <returns></returns>
-        Task TryReserveSeats(Guid evenId);
+        Task TryReserveSeatsAsync(Guid evenId, CancellationToken ct);
         /// <summary>
         /// атомарно откатывает бронирование -- возвращает место 
         /// </summary>

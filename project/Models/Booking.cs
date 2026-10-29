@@ -24,6 +24,18 @@
         public DateTime? ProcessedAt { get; set; }
 
 
+
+        public static Booking Create (BookingRequest bookingRequest) 
+        {
+            return new Booking 
+            {
+                Id = Guid.NewGuid(),
+                EventId = bookingRequest.EventId
+            };
+        }
+
+
+
         private Booking() 
         {
 

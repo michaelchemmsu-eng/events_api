@@ -1,6 +1,6 @@
 ﻿using project.CustomExceptions;
 using project.Models;
-
+using project.DataAccess;
 namespace project.Services
 {
     /*
@@ -18,12 +18,14 @@ namespace project.Services
         private readonly IBookingRepository _bookingStorage;
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
-        private readonly object _bookingLock = new(); // для защиты критической секции 
-        public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService) 
+        private readonly object _bookingLock = new(); // для защиты критической секции
+        private readonly AppDbContext _context;
+        public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService, AppDbContext context) 
         {
             _bookingStorage = BookingStorage;
             _logger = Logger;
             _eventService = EventService;
+            _context = context;
         }
 
         /// <summary>
@@ -34,7 +36,7 @@ namespace project.Services
         /// <param name="eventId"> Id события</param>
         /// <returns> BookingResponse </returns>
         /// <exception cref="NoAvailableSeatsException"></exception>
-        public async Task<BookingResponse> CreateBookingAsync(Guid eventId) 
+        public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct) 
         {
             /*
              * поступает запрос из нескольких потоков на один и тот же eventId
@@ -44,10 +46,13 @@ namespace project.Services
            
             try
             {
-                await _eventService.TryReserveSeats(eventId);//либо успешно резервирует, либо бросает исключение
+                //EventService хранит тот же экземпляр AppDbContext , как так Scope.
+                await _eventService.TryReserveSeatsAsync(eventId,ct);//либо успешно резервирует, либо бросает исключение
 
-                //создаем объект бронирования через репозиторий
-                return _bookingStorage.CreateBooking(new BookingRequest { EventId = eventId });
+                var NewBookingObj = Booking.Create(new BookingRequest {EventId = eventId});
+                var savedBookingEntityEntry = _context.Bookings.Add(NewBookingObj);
+                await _context.SaveChangesAsync(ct);
+                return savedBookingEntityEntry.Entity.ToBookingResponse();
             }
             catch (KeyNotFoundException)
             {
@@ -55,7 +60,7 @@ namespace project.Services
             }
             catch (NoAvailableSeatsException ex) 
             {
-                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}: нет доступных мест для резервирования", eventId);
+                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
                 throw;
             }
             catch (Exception ex)

@@ -75,30 +75,33 @@ namespace project.Services
 
 
 
-
-        public async Task TryReserveSeats(Guid eventId) 
+        /// <summary>
+        /// Попытка резервировать место для события
+        /// </summary>
+        /// <param name="eventId">идетификатор события, для которого резервируется 1 место</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        /// <exception cref="NoAvailableSeatsException"></exception>
+        public async Task TryReserveSeatsAsync(Guid eventId,CancellationToken ct=default) 
         {
-            var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
-            await sempahore.WaitAsync();
-
-            try
+            var updatedRows = await _context.Events
+                .Where(e => e.Id == eventId && e.AvailableSeats > 0)
+                .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
+                                        ,ct);
+            if (updatedRows > 0)
+                return;
+            //до следующей строки другой поток может добавить событие, но маловероятно, что оно при добавлении будет c Id=eventId
+            bool eventExists = await _context.Events.AnyAsync(e => e.Id == eventId, ct);
+            if (!eventExists)
             {
-                if (!_events.TryGetValue(eventId, out Event? existingEvent))
-                {
-                    throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
-                }
-                if (!existingEvent.TryReserveSeats()) 
-                {
-                    throw new NoAvailableSeatsException($"Нет доступных мест на событие с Id {eventId}");
-                }
-                //одновить событие в хранилище
-                _events[eventId] = existingEvent;
-
+                throw new KeyNotFoundException($"Событие {eventId} не найдено.");
             }
-            finally 
+            else 
             {
-                sempahore.Release();
+                throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
             }
+
         }
 
 

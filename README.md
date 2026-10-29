@@ -352,6 +352,7 @@ dotnet run --project project
 - ProcessedAt (DateTime?, опциональное) — дата и время обработки брони.
 - public void Confirm() - метод меняет Status со значением Pending в Status со значнием Confirmed, фиксирует время изменения статуса в свойстве ProcessedAt
 - public void Reject() - метод меняет Status со значением Pending в Status со значнием Rejected, фиксирует время изменения статуса в свойстве ProcessedAt
+- Booking Create(BookingRequest bookingRequest) - фабричный метод создания объекта сущности Booking.
 
 ### модель enum BookingStatus со значениями:
 - Pending = 1  — бронь создана, ожидает обработки;
@@ -433,11 +434,12 @@ dotnet run --project project
 - Task UpdateEventByIdAsync(Guid id, Event Event,CancellationToken ct) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
 - Task DeleteEventAsync(Guid id, CancellationToken ct) - метод удаления события.
 - async Task ReleaseSeatAsync(Guid eventId) - метод для фонового процесса. метод отката.
-- async Task TryReserveSeats(Guid eventId) - атомарно резервирует одно место для события для букинг-сервиса.
+- async Task TryReserveSeatsAsync(Guid eventId, CancellationToken ct) - атомарно резервирует одно место для события для букинг-сервиса. Выбрасывает в вызывающий код исключения при отсутсвии события с Id в БД и при нехватке свобдных мест AvailableSeats
 - private AppDbContext _context -- контекс БД.
 
 
 ## Сервис бронирований BookingService
+- private AppDbContext _context -- контекс БД.
 - private readonly IBookingRepository _bookingStorage - объект хранилища объектов бронирований
 - private readonly IEventService _eventService - сервис событий
 - private readonly object _bookingLock = new() - объект для синхронизации для защиты критической секции 
