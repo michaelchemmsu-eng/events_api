@@ -19,7 +19,7 @@ namespace project.Services
         //private readonly IBookingRepository _bookingStorage;
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
-        private readonly object _bookingLock = new(); // для защиты критической секции
+      
         private readonly AppDbContext _context;
         public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService, AppDbContext context) 
         {
@@ -45,7 +45,13 @@ namespace project.Services
              * обращаемся к усулге ивент сервис 
              * 
              */
-           
+            
+            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            // проблема Потерянного билета
+            //  так как ниже по коду TryReserveSeatsAsync делает запрос в БД в обход ChangeTracker
+            // а SaveChangesAsync может завершится с генерацией исключения, не сохранив объект бронирования
+            // в БД, то обе операции TryReserveSeatsAsync
+            // и SaveChangesAsync нужно выполнить в одной транзакции
             try
             {
                 //EventService хранит тот же экземпляр AppDbContext , как так Scope.
@@ -54,6 +60,7 @@ namespace project.Services
                 var NewBookingObj = Booking.Create(new BookingRequest {EventId = eventId});
                 var savedBookingEntityEntry = _context.Bookings.Add(NewBookingObj);
                 await _context.SaveChangesAsync(ct);
+                await transaction.CommitAsync(ct);//завершаем транзакцию
                 return savedBookingEntityEntry.Entity.ToBookingResponse();
             }
             catch (KeyNotFoundException)
@@ -67,7 +74,7 @@ namespace project.Services
             }
             catch (Exception ex)
             {
-                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
+                _logger.LogError(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
                 throw;
             }
 
