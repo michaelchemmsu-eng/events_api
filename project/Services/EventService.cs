@@ -173,21 +173,23 @@ namespace project.Services
 
 
         /// <summary>
+        /// асинхронный метод.
         /// Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id
         /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
         /// </summary>
         /// <param name="id">Id события Event</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns>EventResponse or throws KeyNotFoundException </returns>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров -- возвращает Dto
-        public EventResponse GetEventResponseById(Guid id)
+        public async Task<EventResponse> GetEventResponseById(Guid id, CancellationToken ct= default)
         {
-            //return _events.TryGetValue(id, out Event? retVal) ? retVal: null;
-            if (!_events.TryGetValue(id, out var retVal))
+            var EventObj = await _context.Events.FirstOrDefaultAsync(e=>e.Id == id,ct);
+            if (EventObj is null)
             {
                 throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
             }
-            return retVal.ToEventResponse();
+            return EventObj.ToEventResponse();
         }
 
 

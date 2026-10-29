@@ -113,16 +113,13 @@ namespace project.Controllers
         /// Получить событие по id
         /// </summary>
         /// <param name="id">id события</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         [HttpGet("{id}")]
-        public ActionResult<Event> GetEventById(Guid id)
+        public async Task <ActionResult<EventResponse>> GetEventById(Guid id, CancellationToken ct = default)
         {
             _logger.LogInformation("Вызов метода GetEventById для события с ID: {EventId}", id);
-            var res = _eventService.GetEventResponseById(id);//бросит exception, если не найдено событие с таким id
-            //if (res == null)
-            //{
-            //    return NotFound(new { message = $"Событие с Id {id} не найдено" });
-            //}
+            var res = await _eventService.GetEventResponseById(id,ct);//бросит exception, если не найдено событие с таким id
             return Ok(res);
         }
 

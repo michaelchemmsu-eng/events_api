@@ -18,16 +18,18 @@ namespace project.Services
         /// <returns></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         Task<PaginatedResult> GetAllEvents(string? title, DateTime? from, DateTime? to, int page = 1, int pageSize = 10, CancellationToken ct = default);
-        
+
         /// <summary>
+        /// асинхронный метод.
         /// Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id
         /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
         /// </summary>
         /// <param name="id">Id события Event</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns>EventResponse or throws KeyNotFoundException </returns>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров -- возвращает Dto
-        EventResponse GetEventResponseById(Guid id);
+        Task<EventResponse> GetEventResponseById(Guid id, CancellationToken ct = default);
         /// <summary>
         /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
         /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
