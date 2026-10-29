@@ -22,17 +22,21 @@ namespace project.Controllers
         /// <param name="to">опциональный. События, которые заканчиваются не позже указанной даты</param>
         /// <param name="page">опциональный. Номер страницы, 1 по умолчанию</param>
         /// <param name="pageSize">опциональный. Размер страницы, 10 по умолчанию</param>
+        /// <param name="ct">токен отмены</param>
         [HttpGet]
-        public ActionResult<PaginatedResult> GetAllEvents(
+        public async Task<ActionResult<PaginatedResult>> GetAllEvents(
             [FromQuery] string? title,
             [FromQuery] DateTime? from,
             [FromQuery] DateTime? to,
             [FromQuery, Range(1, int.MaxValue, ErrorMessage = "Номер страницы должен быть не меньше 1.")] int page = 1,
-            [FromQuery, Range(1, 100, ErrorMessage = "Размер страницы должен быть от 1 до 100.")] int pageSize = 10) 
+            [FromQuery, Range(1, 100, ErrorMessage = "Размер страницы должен быть от 1 до 100.")] int pageSize = 10,
+            CancellationToken ct = default
+            )
+           
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
-            return Ok(_eventService.GetAllEvents(title, from, to, page, pageSize));
+            return Ok(await _eventService.GetAllEvents(title, from, to, page, pageSize,ct));
         }
 
 

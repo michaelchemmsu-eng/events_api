@@ -49,19 +49,18 @@ dotnet run --project project
 
 
 ## Фильтрация и пагинация событий (`GET /events`)
-- Метод получения списка событий поддерживает следующие опциональные параметры строки запроса (Query parameters):
+- асинхронный метод получения списка событий поддерживает следующие опциональные параметры строки запроса (Query parameters):
 - string title  -- Поиск по названию события
 - DateTime from -- Фильтр по дате: события, которые начинаются не раньше указанной даты (StartAt >= from)
 - DateTime to -- Фильтр по дате: события, которые заканчиваются не позже указанной даты (EndAt <= to)
 - int page -- Номер страницы (по умолчанию: 1), фильтрация по значению: page должен быть больше нуля
 - int pageSize -- Количество событий на странице (по умолчанию: 10),  фильтрация по значению: pageSize должен лежать в диапазоне [1,100]
-
-примеры запросов:
-- GET /api/events?title=тайтл
-- GET /api/events?from=2025-06-01T00:00:00Z&to=2025-06-30T23:59:59Z
-- GET /api/events?page=2&pageSize=5
-
-## Формат ответа запроса при стандартных значениях параметров
+- CancellationToken ct -- токен отмены
+- примеры запросов:
+    - GET /api/events?title=тайтл
+    - GET /api/events?from=2025-06-01T00:00:00Z&to=2025-06-30T23:59:59Z
+    - GET /api/events?page=2&pageSize=5
+- Формат ответа запроса при стандартных значениях параметров:
 ```JSON
 {
   "totalEvents": 0,
@@ -424,7 +423,7 @@ dotnet run --project project
 - ConcurrentDictionary<Guid,Event> _events - хранилище событий
 - ConcurrentDictionary<Guid, SemaphoreSlim> _semaphoreOfEventId = new(); - словарь семафоров с ключами-идентификаторами событий. Для атомарного резервирования места по Id события в букинг-сервисе и для атомарного отката события при возникновении ошибки во время обработки букинга в фоновом процессе
 - Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) - асинхронный метод для проверки сущещствования объекта события с Id. Метод иммитирует обращение к БД и принимает токен отмены. Возвращает булево значение
-- PaginatedResult GetAllEvents(string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10) - метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
+- Task <PaginatedResult> GetAllEvents(string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10, CancellationToken ct = default) - метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
         по заголовку (title), по Дате и времени начала события (from), по дате и времени окончания события (to), из отфильтрованной коллекции возвращает страницу с номером page, где каждая страница -- размера pageSize. По умолчанию
         page = 1 , pageSize = 10
 - EventResponse GetEventResponseById(Guid id) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
@@ -467,7 +466,9 @@ dotnet run --project project
 - метод OnModelCreating связывает все конфигурации к контексту.
 - DbContext подключается к провайдеру postgreSQL. Строка подключения -- из appsettings.json. DbContext регистрируется как scoped.
 
-
+# MiddleWare
+## ExceptionHandlingMiddleware
+- Этот MiddleWare перехватывает исключения. В зависимости от вида исключения возвращает ответ Problem Details с корректным статус кодом пользователю
 
 
 # Конфигурация (DataAccess\Configurations)

@@ -3,8 +3,21 @@ namespace project.Services
 {
     public interface IEventService
     {
-        //получить список всех событий
-        PaginatedResult GetAllEvents(string? title, DateTime? from, DateTime? to, int page = 1, int pageSize = 10);
+        /// <summary>
+        /// Асинхронный метод.
+        /// Возвращает все строки в таблице Events. Результат будет отфильтрован
+        /// по первым трем переданным в аргументах значениям,
+        /// а результат пагинарован.
+        /// </summary>
+        /// <param name="title">параметр фильтрации по заголовку</param>
+        /// <param name="from">параметр фильтрации по дате начала события</param>
+        /// <param name="to">параметр фильтрации по дате окончания события</param>
+        /// <param name="page">номер страницы результата</param>
+        /// <param name="pageSize">размер страницы</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        Task<PaginatedResult> GetAllEvents(string? title, DateTime? from, DateTime? to, int page = 1, int pageSize = 10, CancellationToken ct = default);
         
         /// <summary>
         /// Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id

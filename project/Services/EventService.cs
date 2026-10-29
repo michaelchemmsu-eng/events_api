@@ -1,6 +1,7 @@
 ﻿
 using project.CustomExceptions;
 using project.DataAccess;
+
 using project.Models;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
@@ -37,9 +38,8 @@ namespace project.Services
 
         public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) 
         {
-            //иммитация обращения к БД
-            await Task.Delay(500,ct);  
-            return _events.ContainsKey(id);
+            bool IsExist = await _context.Events.AnyAsync(e => e.Id == id, ct);
+            return IsExist;
         }
 
 
@@ -102,13 +102,27 @@ namespace project.Services
         }
 
 
-
-        public PaginatedResult GetAllEvents(
+        /// <summary>
+        /// Асинхронный метод.
+        /// Возвращает все строки в таблице Events. Результат будет отфильтрован
+        /// по первым трем переданным в аргументах значениям,
+        /// а результат пагинарован.
+        /// </summary>
+        /// <param name="title">параметр фильтрации по заголовку</param>
+        /// <param name="from">параметр фильтрации по дате начала события</param>
+        /// <param name="to">параметр фильтрации по дате окончания события</param>
+        /// <param name="page">номер страницы результата</param>
+        /// <param name="pageSize">размер страницы</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public async Task<PaginatedResult> GetAllEvents(
             string? title,
             DateTime? from,
             DateTime? to,
             int page = 1,
-            int pageSize = 10
+            int pageSize = 10,
+            CancellationToken ct=default
             )
         {
             if (page < 1)
@@ -120,7 +134,7 @@ namespace project.Services
                 throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
             }
 
-            var query = _events.Values.AsEnumerable();
+            var query = _context.Events.AsQueryable();
 
            
             
@@ -128,7 +142,7 @@ namespace project.Services
             if (!string.IsNullOrEmpty(title))
             {
                 // регистронезависимый поиск подстроки в заголовке
-                query = query.Where(e => e.Title.Contains(title,StringComparison.OrdinalIgnoreCase));
+                query = query.Where(e => e.Title.Contains(title));
             }
             if (from.HasValue) 
             {
@@ -138,16 +152,14 @@ namespace project.Services
             {
                 query = query.Where(e => e.EndAt <= to.Value);
             }
-            var filteredEvents = query.ToList();
-            int totalCount = filteredEvents.Count;
+            int totalCount = await query.CountAsync(ct);
 
-
-            var pagedEvents = filteredEvents
+            var pagedEvents = await query
                         .OrderBy(e => e.StartAt)//для тестирования сортируем по StartAt, так как ConcurrentDictionary не гарантирует порядок элементов. В тесте ожидаемые элементы хранятся в List.
                         .Skip((page - 1) * pageSize)
                         .Take(pageSize)
                         .Select(ev => ev.ToEventResponse())
-                        .ToArray();
+                        .ToArrayAsync();
 
             return new PaginatedResult
             {
