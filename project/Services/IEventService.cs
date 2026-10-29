@@ -40,11 +40,16 @@ namespace project.Services
         /// <returns>Event or throws KeyNotFoundException</returns>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах -- возвращает Event
-        Task<Event>GetEventByIdAsync(Guid id);
+        Task<Event>GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
-        //создать событие
-        //bool CreateEvent(Guid Id, String title, string? Description, DateTime StartAt, DateTime EndAt);
-        EventResponse CreateEvent(EventDto eventDto);
+
+        /// <summary>
+        /// метод создания сущности Event.
+        /// </summary>
+        /// <param name="eventDto">Dto для создания новой сущности</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns></returns>
+        Task<EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct = default);
 
 
         /// <summary>

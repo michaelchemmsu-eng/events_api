@@ -428,7 +428,7 @@ dotnet run --project project
         page = 1 , pageSize = 10
 - Task<EventResponse> GetEventResponseById(Guid id,CancellationToken ct ) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
 - Task<Event> GetEventByIdAsync(Guid id, CancellationToken ct) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
-- EventResponse CreateEvent(EventDto eventDto)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
+- Task <EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
 - public async Task UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto,CancellationToken. метод для контроллеров.
 - void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
 - void DeleteEvent(Guid id) - метод удаления события.

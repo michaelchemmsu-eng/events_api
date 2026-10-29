@@ -135,15 +135,16 @@ namespace project.Controllers
         /// Создать событие
         /// </summary>
         /// <param name="eventDto">DTO для создания события</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         [HttpPost]
-        public ActionResult<EventResponse> CreateEvent([FromBody] EventDto eventDto) 
+        public ActionResult<EventResponse> CreateEventAsync([FromBody] EventDto eventDto, CancellationToken ct = default) 
         {
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
             //var newId = Guid.NewGuid();
             try
             {
-                var newEvent = _eventService.CreateEvent(eventDto); //бросает исключение, если eventDto.TotalSeats!.Value < 0
+                var newEvent = _eventService.CreateEventAsync(eventDto); //бросает исключение, если eventDto.TotalSeats!.Value < 0
                 return CreatedAtAction
                  (
                      nameof(GetEventById),

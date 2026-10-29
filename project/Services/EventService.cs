@@ -217,21 +217,16 @@ namespace project.Services
         /// <summary>
         /// метод создания сущности Event.
         /// </summary>
-        /// <param name="eventDto"></param>
+        /// <param name="eventDto">Dto для создания новой сущности</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns></returns>
-        public EventResponse CreateEvent(EventDto eventDto) 
+        public async Task <EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct = default) 
         {
-            try 
-            {
-                var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
-                _events[newEvent.Id] = newEvent;
-                return newEvent.ToEventResponse();
-            }
-            catch (ValidationException ex) 
-            {
-                throw;
-            }
-            
+            var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
+            _context.Add(newEvent);
+            await _context.SaveChangesAsync(ct);
+            return newEvent.ToEventResponse();
+
         }
 
         /// <summary>
