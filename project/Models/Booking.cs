@@ -24,7 +24,11 @@
         public DateTime? ProcessedAt { get; set; }
 
 
-
+        /// <summary>
+        /// фабричный метод создает экземпляр сущности Booking
+        /// </summary>
+        /// <param name="bookingRequest"></param>
+        /// <returns></returns>
         public static Booking Create (BookingRequest bookingRequest) 
         {
             return new Booking 

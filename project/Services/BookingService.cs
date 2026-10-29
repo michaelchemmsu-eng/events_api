@@ -1,6 +1,7 @@
 ﻿using project.CustomExceptions;
 using project.Models;
 using project.DataAccess;
+using Microsoft.EntityFrameworkCore;
 namespace project.Services
 {
     /*
@@ -15,14 +16,14 @@ namespace project.Services
      */
     public class BookingService: IBookingService
     {
-        private readonly IBookingRepository _bookingStorage;
+        //private readonly IBookingRepository _bookingStorage;
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
         private readonly object _bookingLock = new(); // для защиты критической секции
         private readonly AppDbContext _context;
         public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService, AppDbContext context) 
         {
-            _bookingStorage = BookingStorage;
+            //_bookingStorage = BookingStorage;
             _logger = Logger;
             _eventService = EventService;
             _context = context;
@@ -34,9 +35,10 @@ namespace project.Services
         /// Выбрасывает исключение NoAvailableSeatsException, если нет доступных мест для резервирования
         /// </summary>
         /// <param name="eventId"> Id события</param>
+        /// <param name="ct"> токен отмены</param>
         /// <returns> BookingResponse </returns>
         /// <exception cref="NoAvailableSeatsException"></exception>
-        public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct) 
+        public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct = default) 
         {
             /*
              * поступает запрос из нескольких потоков на один и тот же eventId
@@ -68,21 +70,38 @@ namespace project.Services
                 _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
                 throw;
             }
-            
-            
+
 
         }
 
-        public async Task<BookingResponse> GetBookingByIdAsync(Guid bookingId) 
+        /// <summary>
+        /// Асинхронный метод.
+        /// метод возвращает информацию о бронировании по идентификатору бронирования.
+        /// Генерирует исключение, если в БД нет информации о бронировании с переданным идентификатором,
+        /// если пользователь отменил запрос, или произошла ошибка на стороне БД.
+        /// </summary>
+        /// <param name="bookingId">идентификатор бронирования</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns></returns>
+        public async Task<BookingResponse> GetBookingByIdAsync(Guid bookingId, CancellationToken ct = default) 
         {
-            try 
+            try
             {
-               
-                return _bookingStorage.GetBookingById(bookingId);
+                var existingBooking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, ct);
+                if (existingBooking is null)
+                    return existingBooking!.ToBookingResponse();
+                else 
+                    throw new KeyNotFoundException($"Бронирование с идентификатором {bookingId} не найдено");
+             
             }
             catch (KeyNotFoundException ex)
             {
                 _logger.LogWarning(ex, "Бронирование с идентификатором {BookingId} не найдено", bookingId);
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Операция была отменена пользователем");
                 throw;
             }
             catch (Exception ex)

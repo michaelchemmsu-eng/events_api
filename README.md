@@ -352,7 +352,7 @@ dotnet run --project project
 - ProcessedAt (DateTime?, опциональное) — дата и время обработки брони.
 - public void Confirm() - метод меняет Status со значением Pending в Status со значнием Confirmed, фиксирует время изменения статуса в свойстве ProcessedAt
 - public void Reject() - метод меняет Status со значением Pending в Status со значнием Rejected, фиксирует время изменения статуса в свойстве ProcessedAt
-- Booking Create(BookingRequest bookingRequest) - фабричный метод создания объекта сущности Booking.
+- static Booking Create(BookingRequest bookingRequest) - фабричный метод создания объекта сущности Booking.
 
 ### модель enum BookingStatus со значениями:
 - Pending = 1  — бронь создана, ожидает обработки;
@@ -443,9 +443,9 @@ dotnet run --project project
 - private readonly IBookingRepository _bookingStorage - объект хранилища объектов бронирований
 - private readonly IEventService _eventService - сервис событий
 - private readonly object _bookingLock = new() - объект для синхронизации для защиты критической секции 
-- Task<BookingResponse> CreateBookingAsync(Guid eventId) - асинхронный метод создания бронирования. для защиты критической секции использует объект _bookingLock. критическая секция: проверка существования события с помощью _eventService, резервирование билетов на событие
+- Task<BookingResponse> CreateBookingAsync(Guid eventId,CancellationToken ct  ) - асинхронный метод создания бронирования. для защиты критической секции использует объект _bookingLock. критическая секция: проверка существования события с помощью _eventService, резервирование билетов на событие
         выбрасывает исключение KeyNotFoundException в случае отсутсвия события с переданным Id. Выбрасывает исключение NoAvailableSeatsException, если нет доступных мест для резервирования.
-- Task<BookingResponse> GetBookingByIdAsync(Guid bookingId) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
+- Task<BookingResponse> GetBookingByIdAsync(Guid bookingId,CancellationToken ct ) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
 
 ## Сервис фоновой обработки бронирований BookingBackgroundService
 - IBookingRepository _bookingRepository - хранилище бронирований
