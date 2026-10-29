@@ -429,9 +429,9 @@ dotnet run --project project
 - Task<EventResponse> GetEventResponseById(Guid id,CancellationToken ct ) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
 - Task<Event> GetEventByIdAsync(Guid id, CancellationToken ct) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
 - Task <EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
-- public async Task UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto,CancellationToken. метод для контроллеров.
-- void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
-- void DeleteEvent(Guid id) - метод удаления события.
+- public async Task UpdateEventAsync(Guid id, EventDto eventDto,CancellationToken ct)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto,CancellationToken. метод для контроллеров.
+- Task UpdateEventByIdAsync(Guid id, Event Event,CancellationToken ct) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
+- Task DeleteEventAsync(Guid id, CancellationToken ct) - метод удаления события.
 - async Task ReleaseSeatAsync(Guid eventId) - метод для фонового процесса. метод отката.
 - async Task TryReserveSeats(Guid eventId) - атомарно резервирует одно место для события для букинг-сервиса.
 - private AppDbContext _context -- контекс БД.

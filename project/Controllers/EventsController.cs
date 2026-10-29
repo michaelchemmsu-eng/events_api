@@ -178,12 +178,13 @@ namespace project.Controllers
         /// </summary>
         /// <param name="id">id события</param>
         /// <param name="eventDto">DTO для обновления события</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         [HttpPut("{id}")]
-        public async Task <IActionResult> UpdateEvent(Guid id, [FromBody] EventDto eventDto, CancellationToken ct = default) 
+        public async Task <IActionResult> UpdateEventAsync(Guid id, [FromBody] EventDto eventDto, CancellationToken ct = default) 
         {
             _logger.LogInformation("Обновление события с ID: {EventId}", id);
-            await _eventService.UpdateEvent(id, eventDto, ct);
+            await _eventService.UpdateEventAsync(id, eventDto, ct);
             return Ok(new { message = $"Событие С Id {id} успешно обновлено" });
                
         }
@@ -200,12 +201,13 @@ namespace project.Controllers
         /// Удалить событие
         /// </summary>
         /// <param name="id">id события</param>
+        /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         [HttpDelete("{id}")]
-        public IActionResult DeleteEvent(Guid id) 
+        public async Task <IActionResult> DeleteEventAsync(Guid id, CancellationToken ct) 
         {
             _logger.LogInformation("Удаление события с ID: {EventId}", id);
-            _eventService.DeleteEvent(id); // бросит exception, если не найдено событие с таким id
+            await _eventService.DeleteEventAsync(id); // бросит exception, если не найдено событие с таким id
             return Ok(new { message = $"Событие С Id {id} успешно удалено" }); 
                 
         }

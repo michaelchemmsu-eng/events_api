@@ -238,7 +238,7 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров
-        public async Task UpdateEvent(Guid id, EventDto eventDto, CancellationToken ct = default) 
+        public async Task UpdateEventAsync(Guid id, EventDto eventDto, CancellationToken ct = default) 
         {
             
             var existingEvent = await _context.Events.FirstOrDefaultAsync(e => e.Id == id,ct);
@@ -258,36 +258,21 @@ namespace project.Services
         /// </summary>
         /// <param name="id">ID события</param>
         /// <param name="Event">Event</param>
+        /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах
-        public void UpdateEventById(Guid id, Event Event)
+        public async Task UpdateEventByIdAsync(Guid id, Event Event, CancellationToken ct = default)
         {
 
-            var updatedEvent = new Event
-            {
-                Id = id,
-                Title = Event.Title!,
-                Description = Event.Description,
-                StartAt = Event.StartAt!,
-                EndAt = Event.EndAt!,
-                TotalSeats = Event.TotalSeats,
-                AvailableSeats =Event.AvailableSeats
+            var existingEvent = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
 
-            };
-            while (true)
+            if (existingEvent is null)
             {
-                if (!_events.TryGetValue(id, out Event? existingEvent))
-                {
-                    throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
-                }
-                // Атомарная замена
-                // Если за время замены другой поток успел его заменить, 
-                // TryUpdate вернет false, и цикл повторится со свежим existingEvent
-                if (_events.TryUpdate(id, updatedEvent, existingEvent))
-                {
-                    return;
-                }
+                throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
+            _context.Entry(existingEvent).CurrentValues.SetValues(Event);//mapping
+            await _context.SaveChangesAsync(ct);
+
 
         }
 
@@ -295,12 +280,14 @@ namespace project.Services
         /// метод удаления события из хранилища
         /// </summary>
         /// <param name="id">Id события</param>
+        /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
-        public void DeleteEvent(Guid id) 
+        public async Task DeleteEventAsync(Guid id, CancellationToken ct) 
         {
-            if (!_events.TryRemove(id, out Event? obj))
+            var numberOfRows = await _context.Events.Where(e => e.Id == id).ExecuteDeleteAsync(ct);
+            if (numberOfRows == 0) 
             {
-                throw new KeyNotFoundException($"Событие с идентификатором {id} не найдено.");
+                throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
         }
 

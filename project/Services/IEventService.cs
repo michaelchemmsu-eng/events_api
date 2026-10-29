@@ -61,7 +61,7 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для контроллеров
-        Task UpdateEvent(Guid id, EventDto eventDto,CancellationToken ct = default);
+        Task UpdateEventAsync(Guid id, EventDto eventDto,CancellationToken ct = default);
 
         /// <summary>
         /// метод обновления события.
@@ -69,15 +69,17 @@ namespace project.Services
         /// </summary>
         /// <param name="id">ID события</param>
         /// <param name="Event">Event</param>
+        /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах
-        void UpdateEventById(Guid id, Event Event);
+        Task UpdateEventByIdAsync(Guid id, Event Event,CancellationToken ct= default);
         /// <summary>
         /// удалить событие. В качестве параметра -- Id события Event.
         /// Если события с Id нет в хранилище, то бросается исключение KeyNotFoundException 
         /// </summary>
         /// <param name="id"></param>
-        void DeleteEvent(Guid id);
+        /// <param name="ct"></param>
+        Task DeleteEventAsync(Guid id, CancellationToken ct = default);
         /// <summary>
         /// Проверяет на наличие события Event с id в хранилище.
         /// возвращает объект Task с булевым значением
