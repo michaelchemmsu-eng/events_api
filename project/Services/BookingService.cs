@@ -21,7 +21,7 @@ namespace project.Services
         private readonly IEventService _eventService;
       
         private readonly AppDbContext _context;
-        public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService, AppDbContext context) 
+        public BookingService(ILogger<BookingService> Logger, IEventService EventService, AppDbContext context) 
         {
             //_bookingStorage = BookingStorage;
             _logger = Logger;
@@ -61,6 +61,7 @@ namespace project.Services
                 var savedBookingEntityEntry = _context.Bookings.Add(NewBookingObj);
                 await _context.SaveChangesAsync(ct);
                 await transaction.CommitAsync(ct);//завершаем транзакцию
+
                 return savedBookingEntityEntry.Entity.ToBookingResponse();
             }
             catch (KeyNotFoundException)

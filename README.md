@@ -448,11 +448,16 @@ dotnet run --project project
 - Task<BookingResponse> GetBookingByIdAsync(Guid bookingId,CancellationToken ct ) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
 
 ## Сервис фоновой обработки бронирований BookingBackgroundService
-- IBookingRepository _bookingRepository - хранилище бронирований
-- IEventService _eventRepository - хранилище событий, сервис событий
-- SemaphoreSlim _processingSemaphore = new(1, 1) - семафор для защиты критической секции. Критическая секция: проверка существования события бронирования, обработка бронирования, обновление объекта события в хранилище событий, обновление объекта бронирования в хранилище бронирований.
-- Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken) - асинхронный метод обработки одной брони. Обрабатывает следующие исключения: OperationCanceledException, ошибки обновления объекта бронирования 
-- Task ExecuteAsync(CancellationToken stoppingToken) - обрабатывает асинхронно все объекты бронирования со статусом Pending. Меняет статус броинрования с Pending на Confirmed или Reejcted.
+- фоновый сервис запускается вместе с приложением. Он предназначен для обработки объектов Booking в БД, которые имеют статус pending. Главный цикл с интервалом TimePause - приватное поле с типом TimeSpan - проверяет все записи в таблице Bookings на наличие 
+  записей со значением Status, равным pending, возвращает из БД все Id таких записей, причем эта операция извлечения списка Id осуществляется в отдельном Scope. 
+- Таким образом, в памяти есть список Id объектов Booking. Далее алгоритм разбирает все эти Id в параллельном режиме с максимальной степенью параллелизма, равной 10.
+- В цикле Parallel.ForEachAsync(...) алгоритм создает новый scope, делает запрос в ДБ, получает объект Booking.
+- Проверяет есть ли в ДБ объект Event, соответствующий этому объекту Booking, меняет статус объекта Booking, сохраняет новое стотяние в БД.
+- В ходе этих операций могут возникнуть исключения: пользователь отменил операцию, перед сохранение запись Booking удалилась.
+- Если возникли другие ошибки, то нужно откатить бронирование, то есть вернуть одно место в соответсвтующей строке Event в колонке AvailbleSeats. 
+- Приватный метод RollBackBookingAsync предназначен для того, чтобы в отдельном Scope откатить бронирование с идентификатором бронирвания и соответсвтующим идентификатором события: в одной транзакции меняет оба состяния -- Booking.Status and Event.AvailableSeats
+
+
 ## Хранилище броинирований.
 - ConcurrentDictionary<Guid, Booking> _bookings = new() - словарь для хранения объектов бронирований
 - IEnumerable<Booking> GetPending() - метод возвращает все объекты бронирований со статусов Pending
@@ -486,6 +491,10 @@ dotnet run --project project
 - конфигурация настроена в BookingConfiguration : IEntityTypeConfiguration<Booking>
     - Id - PK без генерации значения
     - хранение Status как строки в БД
+ 
+# контекст БД, AppDbContext: DbContext
+- Содержит два DbSet: Events и Bookings
+- в методе OnModelCreating настраивает тип Event, так чтобы свойсвто типа AvailableSeats являлось токеном конкурентности (IsConcurrencyToken), подключает все конфигурации в папке Configurations.
 
 
 

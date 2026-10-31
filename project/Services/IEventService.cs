@@ -102,7 +102,7 @@ namespace project.Services
         /// </summary>
         /// <param name="eventId"></param>
         /// <returns></returns>
-        Task ReleaseSeatAsync(Guid eventId);
+        //Task ReleaseSeatAsync(Guid eventId);
 
     }
 }

@@ -43,34 +43,34 @@ namespace project.Services
         }
 
 
-        //метод для фонового процесса. метод отката
-        public async Task ReleaseSeatAsync(Guid eventId) 
-        {
-            var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
-            await sempahore.WaitAsync();
+        ////метод для фонового процесса. метод отката
+        //public async Task ReleaseSeatAsync(Guid eventId) 
+        //{
+        //    var sempahore = _semaphoreOfEventId.GetOrAdd(eventId, _ => new SemaphoreSlim(1, 1));
+        //    await sempahore.WaitAsync();
 
-            try
-            {
-                if (!_events.TryGetValue(eventId, out Event? existingEvent))
-                {
-                    throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
-                }
-                existingEvent.ReleaseSeats();
-                //одновить событие в хранилище
-                _events[eventId] = existingEvent;
+        //    try
+        //    {
+        //        if (!_events.TryGetValue(eventId, out Event? existingEvent))
+        //        {
+        //            throw new KeyNotFoundException($"Событие с идентификатором {eventId} не найдено.");
+        //        }
+        //        existingEvent.ReleaseSeats();
+        //        //одновить событие в хранилище
+        //        _events[eventId] = existingEvent;
 
-            }
-            catch (Exception) 
-            {
-                throw;
-            }
-            finally
-            {
-                sempahore.Release();
-            }
+        //    }
+        //    catch (Exception) 
+        //    {
+        //        throw;
+        //    }
+        //    finally
+        //    {
+        //        sempahore.Release();
+        //    }
 
 
-        }
+        //}
 
 
 
@@ -85,21 +85,81 @@ namespace project.Services
         /// <exception cref="NoAvailableSeatsException"></exception>
         public async Task TryReserveSeatsAsync(Guid eventId,CancellationToken ct=default) 
         {
-            var updatedRows = await _context.Events
-                .Where(e => e.Id == eventId && e.AvailableSeats > 0)
-                .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
-                                        ,ct);
-            if (updatedRows > 0)
-                return;
-            //до следующей строки другой поток может добавить событие, но маловероятно, что оно при добавлении будет c Id=eventId
-            bool eventExists = await _context.Events.AnyAsync(e => e.Id == eventId, ct);
-            if (!eventExists)
+            //первый вариант
+            //var updatedRows = await _context.Events
+            //    .Where(e => e.Id == eventId && e.AvailableSeats > 0)
+            //    .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
+            //                            ,ct);
+            //if (updatedRows > 0)
+            //    return;
+            ////выяснсяем по какой причине updatedRows =0
+            ////до следующей строки другой поток может добавить событие, но маловероятно, что оно при добавлении будет c Id=eventId
+            //bool eventExists = await _context.Events.AnyAsync(e => e.Id == eventId, ct);
+            //if (!eventExists)
+            //{
+            //    throw new KeyNotFoundException($"Событие {eventId} не найдено.");
+            //}
+            //else 
+            //{
+            //    throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
+            //}
+            //второй вариант - оптимистичная блокировка
+            int retryCount = 0;
+            bool isSaved = false;
+            var rowToUpdate = await _context.Events.Where(e => e.Id == eventId).FirstOrDefaultAsync();
+            if (rowToUpdate is null)
             {
                 throw new KeyNotFoundException($"Событие {eventId} не найдено.");
             }
-            else 
+            if (rowToUpdate.AvailableSeats == 0)
             {
                 throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
+            }
+            while (!isSaved && retryCount < 5) 
+            {
+               
+                try
+                {
+                    // Attempt to save changes to the database
+                    await _context.SaveChangesAsync();
+                    isSaved = true;
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    retryCount++;
+                    /*
+                    нужно дойти до свойства AvailableSeats сущности, которая вызвала конфликт
+                    посмотреть на текущее значение этого свойства в БД
+                    если оно 0, то бросить исключение
+                    если оно >0, то обновить Original Value в соответсвии с DataBase value
+                    AvailbaleSeats обновить в соответсвии с DataBase value
+                    повторить попытку обновления на Current Value.
+                     */
+                    //получаем объект entity , который вызвал конфликт
+                    var entry = ex.Entries[0]; //Gets the entries that were involved in the error. Typically this is a single entry, but in some cases it may be zero or multiple entries.
+                    //достаем из БД данные
+                    var databaseValues = await entry.GetDatabaseValuesAsync(); //Queries the database for copies of the values of the tracked entity as they currently exist in the database
+                    
+                    if (databaseValues is null)
+                    {
+                        throw new KeyNotFoundException($"Событие {eventId} было удалено другим пользователем.");
+                    }
+
+                    int currentDbSeats = (int)databaseValues[nameof(Event.AvailableSeats)]!;
+
+                    if (currentDbSeats <= 0)
+                    {
+                        throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
+                    }
+
+                    rowToUpdate.AvailableSeats = currentDbSeats - 1;
+                    entry.OriginalValues.SetValues(databaseValues);//Original values are the values that were originally retrieved from the database, before any edits were made.
+                }
+
+            }
+            if (!isSaved)
+            {
+                throw new Exception("Не удалось забронировать место из-за высокой нагрузки.");
             }
 
         }

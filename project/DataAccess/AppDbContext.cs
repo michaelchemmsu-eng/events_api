@@ -26,6 +26,7 @@ namespace project.DataAccess
         /// <param name="modelBuilder"></param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Event>().Property(p => p.AvailableSeats).IsConcurrencyToken();
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         }
     }

@@ -53,15 +53,15 @@ namespace project
                 };
             });
 
-            builder.Services.AddSingleton<IBookingRepository, InMemoryBookingDictionary>();
-            builder.Services.AddSingleton<IBookingService, BookingService>();
+            //builder.Services.AddSingleton<IBookingRepository, InMemoryBookingDictionary>();
+            builder.Services.AddScoped<IBookingService, BookingService>();
             builder.Services.AddHostedService<BookingBackgroundService>();
 
             // регистрация контекста
             builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
 
-            builder.Services.AddSingleton<IEventService, project.Services.EventService>();
+            builder.Services.AddScoped<IEventService, project.Services.EventService>();
 
             builder.Services.AddProblemDetails(); 
 
@@ -80,6 +80,11 @@ namespace project
 
 
             var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Database.EnsureCreated();
+            }
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
             //app.UseExceptionHandler();
