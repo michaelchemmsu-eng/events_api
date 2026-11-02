@@ -15,6 +15,10 @@ namespace project.DataAccess
         /// </summary>
         public DbSet<Booking> Bookings { get; set; }
 
+        //options -- внешние настройки
+        // регистрация контекста в Program.cs
+        // внешние настройки передаются в конструктор контекста через DI
+        //builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
         public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options)
         {
