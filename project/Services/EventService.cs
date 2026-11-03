@@ -6,23 +6,31 @@ using project.Models;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
+using project.Services.Specifications;
+using project.Repositories;
+using System.Runtime.InteropServices;
 
 namespace project.Services
 {
+    /// <summary>
+    /// Класс сервиса событий
+    /// </summary>
     public class EventService:IEventService
     {
 
-        private AppDbContext _context;
+        private AppDbContext _context;//в роли Unit of Work
+        private readonly IEventRepository _eventRepository;
 
         public EventService(AppDbContext context) 
         {
             _context = context;
+            _eventRepository = new EventRepository(context);
         }
 
 
         public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) 
         {
-            bool IsExist = await _context.Events.AnyAsync(e => e.Id == id, ct);
+            bool IsExist = await _eventRepository.IsExistInRepositoryAsync(id,ct);
             return IsExist;
         }
 
@@ -36,49 +44,30 @@ namespace project.Services
         /// <returns></returns>
         /// <exception cref="KeyNotFoundException"></exception>
         /// <exception cref="NoAvailableSeatsException"></exception>
-        public async Task TryReserveSeatsAsync(Guid eventId,CancellationToken ct=default) 
+        public async Task ReserveSeatsAsync(Guid eventId,CancellationToken ct=default) 
         {
-            //первый вариант
-            //var updatedRows = await _context.Events
-            //    .Where(e => e.Id == eventId && e.AvailableSeats > 0)
-            //    .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
-            //                            ,ct);
-            //if (updatedRows > 0)
-            //    return;
-            ////выяснсяем по какой причине updatedRows =0
-            ////до следующей строки другой поток может добавить событие, но маловероятно, что оно при добавлении будет c Id=eventId
-            //bool eventExists = await _context.Events.AnyAsync(e => e.Id == eventId, ct);
-            //if (!eventExists)
-            //{
-            //    throw new KeyNotFoundException($"Событие {eventId} не найдено.");
-            //}
-            //else 
-            //{
-            //    throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
-            //}
-            //второй вариант - оптимистичная блокировка
-            int retryCount = 0;
-            bool isSaved = false;
-            var rowToUpdate = await _context.Events.Where(e => e.Id == eventId).FirstOrDefaultAsync();
-            if (rowToUpdate is null)
+
+            var eventItem = await _eventRepository.GetEventByIdAsync(eventId, ct);
+
+            if (eventItem is null)
             {
                 throw new KeyNotFoundException($"Событие {eventId} не найдено.");
+
             }
-            if (rowToUpdate.AvailableSeats == 0)
-            {
-                throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
-            }
-            rowToUpdate.AvailableSeats -= 1;
+            eventItem.ReserveSeat();//throws NoAvailableSeatsException if AvailableSeats <=0
+            int retryCount = 0;// счетчик попыток обновления объекта в БД при возникновении конфликта конкурентного доступа
+            bool isSaved = false;
+            
             while (!isSaved && retryCount < 5) 
             {
-               
                 try
                 {
-                    // Attempt to save changes to the database
-                    await _context.SaveChangesAsync();
+                    await _eventRepository.UpdateEventAsync(eventItem, ct);
+                    
                     isSaved = true;
+                    _context.SaveChanges();
                 }
-                catch (DbUpdateConcurrencyException ex)
+                catch (DbUpdateConcurrencyException ex) 
                 {
                     retryCount++;
                     /*
@@ -88,12 +77,12 @@ namespace project.Services
                     если оно >0, то обновить Original Value в соответсвии с DataBase value
                     AvailbaleSeats обновить в соответсвии с DataBase value
                     повторить попытку обновления на Current Value.
-                     */
+                        */
                     //получаем объект entity , который вызвал конфликт
                     var entry = ex.Entries[0]; //Gets the entries that were involved in the error. Typically this is a single entry, but in some cases it may be zero or multiple entries.
                     //достаем из БД данные
                     var databaseValues = await entry.GetDatabaseValuesAsync(); //Queries the database for copies of the values of the tracked entity as they currently exist in the database
-                    
+
                     if (databaseValues is null)
                     {
                         throw new KeyNotFoundException($"Событие {eventId} было удалено другим пользователем.");
@@ -106,15 +95,37 @@ namespace project.Services
                         throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
                     }
 
-                    rowToUpdate.AvailableSeats = currentDbSeats - 1;
-                    entry.OriginalValues.SetValues(databaseValues);//Original values are the values that were originally retrieved from the database, before any edits were made.
+                    eventItem.AvailableSeats = currentDbSeats - 1;
+                    entry.OriginalValues.SetValues(databaseValues);//Original values are the values that were originally
                 }
-
             }
             if (!isSaved)
             {
                 throw new Exception("Не удалось забронировать место из-за высокой нагрузки.");
             }
+
+            ////первый вариант
+            ////var updatedRows = await _context.Events
+            ////    .Where(e => e.Id == eventId && e.AvailableSeats > 0)
+            ////    .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
+            ////                            ,ct);
+            ////if (updatedRows > 0)
+            ////    return;
+            //////выяснсяем по какой причине updatedRows =0
+            //////до следующей строки другой поток может добавить событие, но маловероятно, что оно при добавлении будет c Id=eventId
+            ////bool eventExists = await _context.Events.AnyAsync(e => e.Id == eventId, ct);
+            ////if (!eventExists)
+            ////{
+            ////    throw new KeyNotFoundException($"Событие {eventId} не найдено.");
+            ////}
+            ////else 
+            ////{
+            ////    throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
+            ////}
+
+
+
+           
 
         }
 
@@ -122,8 +133,8 @@ namespace project.Services
         /// <summary>
         /// Асинхронный метод.
         /// Возвращает все строки в таблице Events. Результат будет отфильтрован
-        /// по первым трем переданным в аргументах значениям,
-        /// а результат пагинарован.
+        /// по первым трем переданным в аргументах значениям, если они не null.
+        /// а результат пагинарован, если переданы значения параметров пагинации
         /// </summary>
         /// <param name="title">параметр фильтрации по заголовку</param>
         /// <param name="from">параметр фильтрации по дате начала события</param>
@@ -133,64 +144,31 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public async Task<PaginatedResult> GetAllEvents(
+        public async Task<PaginatedResult> GetAllEventsPaged(
             string? title,
             DateTime? from,
             DateTime? to,
-            int page = 1,
-            int pageSize = 10,
+            int page ,
+            int pageSize,
             CancellationToken ct=default
             )
         {
-            if (page < 1)
-            {
-                throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть не меньше 1.");
-            }
-            if (pageSize < 1 || pageSize > 100)
-            {
-                throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть от 1 до 100.");
-            }
-
-            var query = _context.Events.AsQueryable();
-
-           
-            
-            //фильтруем по title
-            if (!string.IsNullOrEmpty(title))
-            {
-                // регистронезависимый поиск подстроки в заголовке
-                query = query.Where(e => e.Title.Contains(title));
-            }
-            if (from.HasValue) 
-            {
-                query = query.Where(e => e.StartAt >= from.Value);
-            }
-            if (to.HasValue) 
-            {
-                query = query.Where(e => e.EndAt <= to.Value);
-            }
-            int totalCount = await query.CountAsync(ct);
-
-            var pagedEvents = await query
-                        .OrderBy(e => e.StartAt)//для тестирования сортируем по StartAt, так как ConcurrentDictionary не гарантирует порядок элементов. В тесте ожидаемые элементы хранятся в List.
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .Select(ev => ev.ToEventResponse())
-                        .ToArrayAsync();
-
+            //создаем спецификацию для фильтрации
+            var specification = new EventSearchSpecification(title, from, to, page, pageSize);
+            int totalCount = await _eventRepository.CountAsync(specification, ct);
+            var items = await _eventRepository.ListEventsFilteredPagedAsync(specification, ct);//получаем отфильтрованные и пагинированные данные
             return new PaginatedResult
             {
                 totalEvents = totalCount,
-                eventArray = pagedEvents,
+                eventArray = items.Select(e => e.ToEventResponse()).ToArray(),
                 currentPage = page,
-                pageSizeOfCurrentPage = pagedEvents.Length
+                pageSizeOfCurrentPage = items.Count
             };
-            
+
         }
 
 
         /// <summary>
-        /// асинхронный метод.
         /// Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id
         /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище 
         /// </summary>
@@ -201,7 +179,7 @@ namespace project.Services
         // метод для контроллеров -- возвращает Dto
         public async Task<EventResponse> GetEventResponseById(Guid id, CancellationToken ct= default)
         {
-            var EventObj = await _context.Events.FirstOrDefaultAsync(e=>e.Id == id,ct);
+            var EventObj = await _eventRepository.GetEventByIdAsync(id,ct);
             if (EventObj is null)
             {
                 throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
@@ -220,19 +198,19 @@ namespace project.Services
         /// <returns>Event or throws KeyNotFoundException</returns>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах -- возвращает Event
-        public async Task <Event> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-        {
-            var EventObj = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
-            if (EventObj is null)
-            {
-                throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
-            }
-            return EventObj;
-        }
+        //public async Task <Event> GetEventByIdAsync(Guid id, CancellationToken ct = default)
+        //{
+        //    var EventObj = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
+        //    if (EventObj is null)
+        //    {
+        //        throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
+        //    }
+        //    return EventObj;
+        //}
 
 
         /// <summary>
-        /// метод создания сущности Event.
+        /// метод создания сущности Event в репозитории.
         /// </summary>
         /// <param name="eventDto">Dto для создания новой сущности</param>
         /// <param name="ct">токен отмены</param>
@@ -240,15 +218,14 @@ namespace project.Services
         public async Task <EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct = default) 
         {
             var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
-            _context.Add(newEvent);
+            await _eventRepository.AddEventAsync(newEvent, ct);
             await _context.SaveChangesAsync(ct);
             return newEvent.ToEventResponse();
 
         }
 
         /// <summary>
-        /// метод обновления события.
-        /// принимает в качестве параметра Id события для обновления, EventDto, CancellationToke 
+        /// метод обновления события в репозитории. 
         /// </summary>
         /// <param name="id">ID события</param>
         /// <param name="eventDto">EventDto</param>
@@ -257,14 +234,15 @@ namespace project.Services
         // метод для контроллеров
         public async Task UpdateEventAsync(Guid id, EventDto eventDto, CancellationToken ct = default) 
         {
-            
-            var existingEvent = await _context.Events.FirstOrDefaultAsync(e => e.Id == id,ct);
+
+            var existingEvent = await _eventRepository.GetEventByIdAsync(id, ct);
             if (existingEvent is null) 
             {
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
             
             _context.Entry(existingEvent).CurrentValues.SetValues(eventDto);//mapping
+            await _eventRepository.UpdateEventAsync(existingEvent,ct);
             await _context.SaveChangesAsync(ct);
 
         }
@@ -278,20 +256,20 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах
-        public async Task UpdateEventByIdAsync(Guid id, Event Event, CancellationToken ct = default)
-        {
+        //public async Task UpdateEventByIdAsync(Guid id, Event Event, CancellationToken ct = default)
+        //{
 
-            var existingEvent = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
+        //    var existingEvent = await _eventRepository.GetEventByIdAsync(id,ct);
 
-            if (existingEvent is null)
-            {
-                throw new KeyNotFoundException($"Event with the key {id} is not found");
-            }
-            _context.Entry(existingEvent).CurrentValues.SetValues(Event);//mapping
-            await _context.SaveChangesAsync(ct);
+        //    if (existingEvent is null)
+        //    {
+        //        throw new KeyNotFoundException($"Event with the key {id} is not found");
+        //    }
+        //    _context.Entry(existingEvent).CurrentValues.SetValues(Event);//mapping
+        //    await _context.SaveChangesAsync(ct);
 
 
-        }
+        //}
 
         /// <summary>
         /// метод удаления события из хранилища
@@ -301,11 +279,15 @@ namespace project.Services
         /// <exception cref="KeyNotFoundException"></exception>
         public async Task DeleteEventAsync(Guid id, CancellationToken ct) 
         {
-            var numberOfRows = await _context.Events.Where(e => e.Id == id).ExecuteDeleteAsync(ct);
-            if (numberOfRows == 0) 
+            var existingEvent = await _eventRepository.GetEventByIdAsync(id, ct);
+            if (existingEvent is null)
             {
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
+            await _eventRepository.DeleteEventAsync(existingEvent, ct);
+            await _context.SaveChangesAsync(ct);
+
+
         }
 
     }

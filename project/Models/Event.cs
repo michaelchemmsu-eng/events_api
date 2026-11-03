@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using project.CustomExceptions;
+using System.ComponentModel.DataAnnotations;
 
 namespace project.Models
 {
@@ -93,12 +94,13 @@ namespace project.Models
         /// </summary>
         /// <param name="count">число мест для запроса на резервирования. По умолчанию 1</param>
         /// <returns> возвращает false, если свободных мест недостаточно</returns>
-        public bool TryReserveSeats(int count = 1) 
+        public void ReserveSeat()
         {
-            if (AvailableSeats < count)
-                return false;
-            AvailableSeats -= count;
-            return true;
+            if (AvailableSeats <= 0)
+            {
+                throw new NoAvailableSeatsException($"Нет доступных мест для события {this.Id}");
+            }
+            AvailableSeats--;
         }
 
 

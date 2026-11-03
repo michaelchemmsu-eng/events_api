@@ -2,30 +2,24 @@
 using project.Models;
 using project.DataAccess;
 using Microsoft.EntityFrameworkCore;
+using project.Repositories;
 namespace project.Services
 {
-    /*
-     BookingService (Сервис бронирования):
 
-    Генерирует Id = Guid.NewGuid().
-    Ставит Status = BookingStatus.Pending.
-    Ставит CreatedAt = DateTime.UtcNow.
-    КЛАДЕТ бронь в хранилище (через репозиторий).
-    И сразу отвечает клиенту статус Pending.
-
-     */
     public class BookingService: IBookingService
     {
         //private readonly IBookingRepository _bookingStorage;
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
-      
+        private readonly IBookingRepository _bookingRepository;
+
         private readonly AppDbContext _context;
-        public BookingService(ILogger<BookingService> Logger, IEventService EventService, AppDbContext context) 
+        public BookingService(ILogger<BookingService> Logger, IEventService EventService, IBookingRepository BookingRepository, AppDbContext context) 
         {
             //_bookingStorage = BookingStorage;
             _logger = Logger;
             _eventService = EventService;
+            _bookingRepository = BookingRepository;
             _context = context;
         }
 
@@ -40,12 +34,7 @@ namespace project.Services
         /// <exception cref="NoAvailableSeatsException"></exception>
         public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct = default) 
         {
-            /*
-             * поступает запрос из нескольких потоков на один и тот же eventId
-             * обращаемся к усулге ивент сервис 
-             * 
-             */
-            
+                        
             using var transaction = await _context.Database.BeginTransactionAsync(ct);
             // проблема Потерянного билета
             //  так как ниже по коду TryReserveSeatsAsync делает запрос в БД в обход ChangeTracker
@@ -55,14 +44,14 @@ namespace project.Services
             try
             {
                 //EventService хранит тот же экземпляр AppDbContext , как так Scope.
-                await _eventService.TryReserveSeatsAsync(eventId,ct);//либо успешно резервирует, либо бросает исключение
+                await _eventService.ReserveSeatsAsync(eventId,ct);//либо успешно резервирует, либо бросает исключение
 
                 var NewBookingObj = Booking.Create(new BookingRequest {EventId = eventId});
-                var savedBookingEntityEntry = _context.Bookings.Add(NewBookingObj);
-                await _context.SaveChangesAsync(ct);
+                await _bookingRepository.AddBookingAsync(NewBookingObj, ct);
+              
                 await transaction.CommitAsync(ct);//завершаем транзакцию
 
-                return savedBookingEntityEntry.Entity.ToBookingResponse();
+                return NewBookingObj.ToBookingResponse();
             }
             catch (KeyNotFoundException)
             {
@@ -95,7 +84,7 @@ namespace project.Services
         {
             try
             {
-                var existingBooking = await _context.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, ct);
+                var existingBooking = await _bookingRepository.GetBookingByIdAsync(bookingId, ct);
                 if (existingBooking is null)
                     return existingBooking!.ToBookingResponse();
                 else 

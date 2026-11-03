@@ -36,7 +36,7 @@ namespace project.Controllers
         {
             _logger.LogInformation("Вызов метода GetAllEvents: получение всех событий");
             //получить список
-            return Ok(await _eventService.GetAllEvents(title, from, to, page, pageSize,ct));
+            return Ok(await _eventService.GetAllEventsPaged(title, from, to, page, pageSize, ct));
         }
 
 

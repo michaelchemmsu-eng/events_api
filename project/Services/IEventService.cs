@@ -17,7 +17,7 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
-        Task<PaginatedResult> GetAllEvents(string? title, DateTime? from, DateTime? to, int page = 1, int pageSize = 10, CancellationToken ct = default);
+        Task<PaginatedResult> GetAllEventsPaged(string? title, DateTime? from, DateTime? to, int page = 1, int pageSize = 10, CancellationToken ct = default);
 
         /// <summary>
         /// асинхронный метод.
@@ -40,7 +40,7 @@ namespace project.Services
         /// <returns>Event or throws KeyNotFoundException</returns>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах -- возвращает Event
-        Task<Event>GetEventByIdAsync(Guid id, CancellationToken ct = default);
+        //Task<Event>GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
 
         /// <summary>
@@ -72,7 +72,7 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
         // метод для бизнес-логики в других сервисах
-        Task UpdateEventByIdAsync(Guid id, Event Event,CancellationToken ct= default);
+        //Task UpdateEventByIdAsync(Guid id, Event Event,CancellationToken ct= default);
         /// <summary>
         /// удалить событие. В качестве параметра -- Id события Event.
         /// Если события с Id нет в хранилище, то бросается исключение KeyNotFoundException 
@@ -96,7 +96,7 @@ namespace project.Services
         /// </summary>
         /// <param name="evenId">идентификатоор события</param>
         /// <returns></returns>
-        Task TryReserveSeatsAsync(Guid evenId, CancellationToken ct);
+        Task ReserveSeatsAsync(Guid evenId, CancellationToken ct);
         /// <summary>
         /// атомарно откатывает бронирование -- возвращает место 
         /// </summary>
