@@ -114,7 +114,30 @@ namespace project.Models
             AvailableSeats += count;
         }
 
-      
-       
+        /// <summary>
+        /// обновить значения свойств Event из EventDto, если они не null. Используется в методе UpdateEventAsync сервиса EventService
+        /// </summary>
+        /// <param name="eventDto"></param>
+        public void UpdateFromDto(EventDto eventDto) 
+        {
+            //получить все свойства EventDto через reflection и присвоить их значения свойствам Event, если они не null
+            var eventDtoProperties = typeof(EventDto).GetProperties();
+            //пройтись в цикле по всем propertyInfo EventDto и присвоить их значения свойствам Event, если они не null
+            foreach (var property in eventDtoProperties)
+            {
+                var value = property.GetValue(eventDto);
+                if (value != null)
+                {
+                    var eventProperty = typeof(Event).GetProperty(property.Name);
+                    if (eventProperty != null)
+                    {
+                        eventProperty.SetValue(this, value);
+                    }
+                }
+            }
+        }
+
+
+
     }
 }

@@ -71,6 +71,13 @@ namespace project.Repositories
         /// <returns></returns>
         Task<bool> IsExistInRepositoryAsync(Guid Id, CancellationToken ct);
 
+        /// <summary>
+        /// Сохраняет все внесенные изменения в одной транзакции
+        /// </summary>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        Task SaveChangesAsync(CancellationToken ct);
+
 
     }
 }

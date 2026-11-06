@@ -16,16 +16,19 @@ namespace project.Services.Specifications
             string? title,
             DateTime? from, DateTime? to,
             int? page, int? pageSize)
-        
-        
         {
-            if (page.HasValue && pageSize.HasValue)
+            if (page.HasValue)
             {
                 ArgumentOutOfRangeException.ThrowIfNegativeOrZero(page.Value);
+            }
+            if (pageSize.HasValue)
+            {
                 ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize.Value);
             }
-            //если title null или пустой, то не фильтруем по title 
-            Criteria = e => (string.IsNullOrEmpty(title) || e.Title.ToLower().Contains(title.ToLower())) &&
+             
+            Criteria = e =>
+                //если title null или пустой, то не фильтруем по title
+                (string.IsNullOrEmpty(title) || e.Title.ToLower().Contains(title.ToLower())) &&
                 (!from.HasValue || e.StartAt >= from.Value) && //если HasValue true, то фильтруем по StartAt >= from.Value, иначе не фильтруем по StartAt
                 (!to.HasValue || e.EndAt <= to.Value);
             OrderBy = e => e.StartAt;

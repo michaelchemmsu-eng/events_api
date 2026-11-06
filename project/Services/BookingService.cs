@@ -13,14 +13,14 @@ namespace project.Services
         private readonly IEventService _eventService;
         private readonly IBookingRepository _bookingRepository;
 
-        private readonly AppDbContext _context;
+        //private readonly AppDbContext _context;
         public BookingService(ILogger<BookingService> Logger, IEventService EventService, IBookingRepository BookingRepository, AppDbContext context) 
         {
             //_bookingStorage = BookingStorage;
             _logger = Logger;
             _eventService = EventService;
             _bookingRepository = BookingRepository;
-            _context = context;
+            //_context = context;
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace project.Services
         public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct = default) 
         {
                         
-            using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            //using var transaction = await _context.Database.BeginTransactionAsync(ct);
             // проблема Потерянного билета
             //  так как ниже по коду TryReserveSeatsAsync делает запрос в БД в обход ChangeTracker
             // а SaveChangesAsync может завершится с генерацией исключения, не сохранив объект бронирования
@@ -44,12 +44,11 @@ namespace project.Services
             try
             {
                 //EventService хранит тот же экземпляр AppDbContext , как так Scope.
-                await _eventService.ReserveSeatsAsync(eventId,ct);//либо успешно резервирует, либо бросает исключение
-
-                var NewBookingObj = Booking.Create(new BookingRequest {EventId = eventId});
+                var NewBookingObj = Booking.Create(new BookingRequest { EventId = eventId });
                 await _bookingRepository.AddBookingAsync(NewBookingObj, ct);
-              
-                await transaction.CommitAsync(ct);//завершаем транзакцию
+                await _eventService.ReserveSeatsAsync(eventId,ct);//либо успешно резервирует с коммитом, либо бросает исключение
+
+               // await transaction.CommitAsync(ct);//завершаем транзакцию
 
                 return NewBookingObj.ToBookingResponse();
             }

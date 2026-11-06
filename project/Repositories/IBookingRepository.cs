@@ -9,5 +9,6 @@ namespace project.Repositories
         Task UpdateBookingAsync(Booking booking, CancellationToken ct = default);
         Task DeleteBookingAsync(Booking booking, CancellationToken ct = default);
         Task <List<Booking>> GetBookingsAsync(Guid eventId, CancellationToken ct = default);
+        Task SaveChangesAsync(CancellationToken ct = default);
     }
 }

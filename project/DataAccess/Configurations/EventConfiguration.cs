@@ -24,7 +24,7 @@ namespace project.DataAccess.Configurations
             //Title - обязательное поле
             builder.Property(e => e.Title).IsRequired().HasMaxLength(200);
 
-            builder.Property(e => e.Description).IsRequired().HasMaxLength(2000);
+            builder.Property(e => e.Description).HasMaxLength(2000);
 
             //StartAt - обязательное
             builder.Property(e => e.StartAt).IsRequired();

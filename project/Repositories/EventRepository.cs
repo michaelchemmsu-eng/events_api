@@ -17,6 +17,10 @@ namespace project.Repositories
         }
 
 
+        public async Task SaveChangesAsync(CancellationToken ct)
+        {
+            await _context.SaveChangesAsync(ct);
+        }
 
 
         public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct)

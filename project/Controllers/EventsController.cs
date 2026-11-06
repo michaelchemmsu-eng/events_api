@@ -207,7 +207,7 @@ namespace project.Controllers
         public async Task <IActionResult> DeleteEventAsync(Guid id, CancellationToken ct) 
         {
             _logger.LogInformation("Удаление события с ID: {EventId}", id);
-            await _eventService.DeleteEventAsync(id); // бросит exception, если не найдено событие с таким id
+            await _eventService.DeleteEventAsync(id, ct); // бросит exception, если не найдено событие с таким id
             return Ok(new { message = $"Событие С Id {id} успешно удалено" }); 
                 
         }

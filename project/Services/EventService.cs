@@ -18,12 +18,12 @@ namespace project.Services
     public class EventService:IEventService
     {
 
-        private AppDbContext _context;//в роли Unit of Work
+       // private AppDbContext _context;//в роли Unit of Work
         private readonly IEventRepository _eventRepository;
 
         public EventService(AppDbContext context) 
         {
-            _context = context;
+            //_context = context;
             _eventRepository = new EventRepository(context);
         }
 
@@ -65,7 +65,7 @@ namespace project.Services
                     await _eventRepository.UpdateEventAsync(eventItem, ct);
                     
                     isSaved = true;
-                    _context.SaveChanges();
+                    await _eventRepository.SaveChangesAsync(ct);
                 }
                 catch (DbUpdateConcurrencyException ex) 
                 {
@@ -219,7 +219,7 @@ namespace project.Services
         {
             var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
             await _eventRepository.AddEventAsync(newEvent, ct);
-            await _context.SaveChangesAsync(ct);
+            await _eventRepository.SaveChangesAsync(ct);
             return newEvent.ToEventResponse();
 
         }
@@ -241,9 +241,9 @@ namespace project.Services
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
             
-            _context.Entry(existingEvent).CurrentValues.SetValues(eventDto);//mapping
+            existingEvent.UpdateFromDto(eventDto);
             await _eventRepository.UpdateEventAsync(existingEvent,ct);
-            await _context.SaveChangesAsync(ct);
+            await _eventRepository.SaveChangesAsync(ct);
 
         }
 
@@ -285,7 +285,7 @@ namespace project.Services
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
             await _eventRepository.DeleteEventAsync(existingEvent, ct);
-            await _context.SaveChangesAsync(ct);
+            await _eventRepository.SaveChangesAsync(ct);
 
 
         }

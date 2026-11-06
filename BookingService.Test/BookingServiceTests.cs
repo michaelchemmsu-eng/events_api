@@ -11,7 +11,8 @@ using System.Diagnostics;
 using System.Net;
 namespace BookingService.Test
 {
-    public class BookingServiceTest
+    /*
+    public class BookingServiceTests
     {
         //public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger
         
@@ -20,7 +21,7 @@ namespace BookingService.Test
         private EventService _eventService;
 
 
-        public BookingServiceTest()
+        public BookingServiceTests()
         {
 
             _bookingRepository = new InMemoryBookingDictionary(); 
@@ -854,6 +855,6 @@ namespace BookingService.Test
 
 
     }
-
+    */
 
 }

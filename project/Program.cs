@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project.DataAccess;
 using project.Middlewares;
+using project.Repositories;
 using project.Services;
 using System.Reflection;
 
@@ -53,15 +54,20 @@ namespace project
                 };
             });
 
-            //builder.Services.AddSingleton<IBookingRepository, InMemoryBookingDictionary>();
+            builder.Services.AddScoped<IEventRepository, EventRepository>();
+            builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+
+            builder.Services.AddScoped<IEventService, EventService>();
             builder.Services.AddScoped<IBookingService, BookingService>();
+
+
+            //builder.Services.AddSingleton<IBookingRepository, InMemoryBookingDictionary>();
+       
             builder.Services.AddHostedService<BookingBackgroundService>();
 
             // регистрация контекста
             builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-
-            builder.Services.AddScoped<IEventService, project.Services.EventService>();
 
             builder.Services.AddProblemDetails(); 
 
