@@ -1,29 +1,26 @@
 ﻿using project.CustomExceptions;
 using project.Models;
-
+using project.DataAccess;
+using Microsoft.EntityFrameworkCore;
+using project.Repositories;
 namespace project.Services
 {
-    /*
-     BookingService (Сервис бронирования):
 
-    Генерирует Id = Guid.NewGuid().
-    Ставит Status = BookingStatus.Pending.
-    Ставит CreatedAt = DateTime.UtcNow.
-    КЛАДЕТ бронь в хранилище (через репозиторий).
-    И сразу отвечает клиенту статус Pending.
-
-     */
     public class BookingService: IBookingService
     {
-        private readonly IBookingRepository _bookingStorage;
+        //private readonly IBookingRepository _bookingStorage;
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
-        private readonly object _bookingLock = new(); // для защиты критической секции 
-        public BookingService(IBookingRepository BookingStorage, ILogger<BookingService> Logger, IEventService EventService) 
+        private readonly IBookingRepository _bookingRepository;
+
+        //private readonly AppDbContext _context;
+        public BookingService(ILogger<BookingService> Logger, IEventService EventService, IBookingRepository BookingRepository, AppDbContext context) 
         {
-            _bookingStorage = BookingStorage;
+            //_bookingStorage = BookingStorage;
             _logger = Logger;
             _eventService = EventService;
+            _bookingRepository = BookingRepository;
+            //_context = context;
         }
 
         /// <summary>
@@ -32,22 +29,28 @@ namespace project.Services
         /// Выбрасывает исключение NoAvailableSeatsException, если нет доступных мест для резервирования
         /// </summary>
         /// <param name="eventId"> Id события</param>
+        /// <param name="ct"> токен отмены</param>
         /// <returns> BookingResponse </returns>
         /// <exception cref="NoAvailableSeatsException"></exception>
-        public async Task<BookingResponse> CreateBookingAsync(Guid eventId) 
+        public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct = default) 
         {
-            /*
-             * поступает запрос из нескольких потоков на один и тот же eventId
-             * обращаемся к усулге ивент сервис 
-             * 
-             */
-           
+                        
+            //using var transaction = await _context.Database.BeginTransactionAsync(ct);
+            // проблема Потерянного билета
+            //  так как ниже по коду TryReserveSeatsAsync делает запрос в БД в обход ChangeTracker
+            // а SaveChangesAsync может завершится с генерацией исключения, не сохранив объект бронирования
+            // в БД, то обе операции TryReserveSeatsAsync
+            // и SaveChangesAsync нужно выполнить в одной транзакции
             try
             {
-                await _eventService.TryReserveSeats(eventId);//либо успешно резервирует, либо бросает исключение
+                //EventService хранит тот же экземпляр AppDbContext , как так Scope.
+                var NewBookingObj = Booking.Create(new BookingRequest { EventId = eventId });
+                await _bookingRepository.AddBookingAsync(NewBookingObj, ct);
+                await _eventService.ReserveSeatsAsync(eventId,ct);//либо успешно резервирует с коммитом, либо бросает исключение
 
-                //создаем объект бронирования через репозиторий
-                return _bookingStorage.CreateBooking(new BookingRequest { EventId = eventId });
+               // await transaction.CommitAsync(ct);//завершаем транзакцию
+
+                return NewBookingObj.ToBookingResponse();
             }
             catch (KeyNotFoundException)
             {
@@ -55,29 +58,46 @@ namespace project.Services
             }
             catch (NoAvailableSeatsException ex) 
             {
-                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}: нет доступных мест для резервирования", eventId);
+                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
                 throw;
             }
             catch (Exception ex)
             {
-                _logger.LogInformation(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
+                _logger.LogError(ex, "Ошибка при создании бронирования для события {EventId}", eventId);
                 throw;
             }
-            
-            
+
 
         }
 
-        public async Task<BookingResponse> GetBookingByIdAsync(Guid bookingId) 
+        /// <summary>
+        /// Асинхронный метод.
+        /// метод возвращает информацию о бронировании по идентификатору бронирования.
+        /// Генерирует исключение, если в БД нет информации о бронировании с переданным идентификатором,
+        /// если пользователь отменил запрос, или произошла ошибка на стороне БД.
+        /// </summary>
+        /// <param name="bookingId">идентификатор бронирования</param>
+        /// <param name="ct">токен отмены</param>
+        /// <returns></returns>
+        public async Task<BookingResponse> GetBookingByIdAsync(Guid bookingId, CancellationToken ct = default) 
         {
-            try 
+            try
             {
-               
-                return _bookingStorage.GetBookingById(bookingId);
+                var existingBooking = await _bookingRepository.GetBookingByIdAsync(bookingId, ct);
+                if (existingBooking is null)
+                    return existingBooking!.ToBookingResponse();
+                else 
+                    throw new KeyNotFoundException($"Бронирование с идентификатором {bookingId} не найдено");
+             
             }
             catch (KeyNotFoundException ex)
             {
                 _logger.LogWarning(ex, "Бронирование с идентификатором {BookingId} не найдено", bookingId);
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Операция была отменена пользователем");
                 throw;
             }
             catch (Exception ex)

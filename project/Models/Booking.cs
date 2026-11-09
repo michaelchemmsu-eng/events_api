@@ -9,10 +9,7 @@
         /// идентификатор бронирования, генерируется системой при создании бронирования
         /// </summary>
         public Guid Id { get; set; } // система сама будет генерировать id при создании бронирования
-        /// <summary>
-        /// идентификатор события, к которому относится бронирование
-        /// </summary>
-        public Guid EventId { get; set; } // идентификатор события, к которому относится бронирование
+
         /// <summary>
         /// статус бронирования, по умолчанию Pending
         /// </summary>
@@ -25,6 +22,38 @@
         /// дата и время обработки брони, может быть null, если бронь еще не обработана
         /// </summary>
         public DateTime? ProcessedAt { get; set; }
+
+
+        /// <summary>
+        /// фабричный метод создает экземпляр сущности Booking
+        /// </summary>
+        /// <param name="bookingRequest"></param>
+        /// <returns></returns>
+        public static Booking Create (BookingRequest bookingRequest) 
+        {
+            return new Booking 
+            {
+                Id = Guid.NewGuid(),
+                EventId = bookingRequest.EventId
+            };
+        }
+
+
+
+        private Booking() 
+        {
+
+        }
+
+        /// <summary>
+        /// навигационное свойство
+        /// </summary>
+        public Event Event { get; set; }
+        /// <summary>
+        /// идентификатор события, к которому относится бронирование
+        /// </summary>
+        public Guid EventId { get; set; } // идентификатор события, к которому относится бронирование, - FK
+
 
         /// <summary>
         /// изменяет статут Pending объекта Booking на статут Confirmed
@@ -53,8 +82,21 @@
     }
     /// <summary>
     /// Pending — бронь создана, ожидает обработки;
-    /// Confirmed — бронь подтверждена;
-    /// ejected — бронь отклонена.
+    
+
     /// </summary>
-    public enum BookingStatus { Pending=1, Confirmed , Rejected }
+    public enum BookingStatus {
+        /// <summary>
+        /// Pending — бронь создана, ожидает обработки;
+        /// </summary>
+        Pending = 1,
+        /// <summary>
+        /// Confirmed — бронь подтверждена;
+        /// </summary>
+        Confirmed,
+        /// <summary>
+        /// ejected — бронь отклонена.
+        /// </summary>
+        Rejected
+    }
 }

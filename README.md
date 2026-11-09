@@ -13,7 +13,7 @@ RESTful API сервис для управления событиями.
 ### 1. Клонирование репозитория и переход в ветку
 Если репозиторий еще не склонирован:
 ```bash
-git clone -b sprint-4 https://github.com/michaelchemmsu-eng/events_api.git
+git clone -b sprint-5 https://github.com/michaelchemmsu-eng/events_api.git
 cd events_api
 ```
 
@@ -49,19 +49,18 @@ dotnet run --project project
 
 
 ## Фильтрация и пагинация событий (`GET /events`)
-- Метод получения списка событий поддерживает следующие опциональные параметры строки запроса (Query parameters):
+- асинхронный метод получения списка событий поддерживает следующие опциональные параметры строки запроса (Query parameters):
 - string title  -- Поиск по названию события
 - DateTime from -- Фильтр по дате: события, которые начинаются не раньше указанной даты (StartAt >= from)
 - DateTime to -- Фильтр по дате: события, которые заканчиваются не позже указанной даты (EndAt <= to)
 - int page -- Номер страницы (по умолчанию: 1), фильтрация по значению: page должен быть больше нуля
 - int pageSize -- Количество событий на странице (по умолчанию: 10),  фильтрация по значению: pageSize должен лежать в диапазоне [1,100]
-
-примеры запросов:
-- GET /api/events?title=тайтл
-- GET /api/events?from=2025-06-01T00:00:00Z&to=2025-06-30T23:59:59Z
-- GET /api/events?page=2&pageSize=5
-
-## Формат ответа запроса при стандартных значениях параметров
+- CancellationToken ct -- токен отмены
+- примеры запросов:
+    - GET /api/events?title=тайтл
+    - GET /api/events?from=2025-06-01T00:00:00Z&to=2025-06-30T23:59:59Z
+    - GET /api/events?page=2&pageSize=5
+- Формат ответа запроса при стандартных значениях параметров:
 ```JSON
 {
   "totalEvents": 0,
@@ -347,12 +346,13 @@ dotnet run --project project
 ### модель Booking - сущность бронирования события
 **Состав полей:**
 - Id (Guid, обязательное) — уникальный идентификатор брони; Система генерирует id при создании бронирования
-- EventId (Guid, обязательное) — идентификатор события, к которому относится бронь;
+- EventId (Guid, обязательное) — идентификатор события, к которому относится бронь, - суть FK
 - Status (BookingStatus, обязательное) — текущий статус брони;
 - CreatedAt (DateTime, обязательное) — дата и время создания брони;
 - ProcessedAt (DateTime?, опциональное) — дата и время обработки брони.
 - public void Confirm() - метод меняет Status со значением Pending в Status со значнием Confirmed, фиксирует время изменения статуса в свойстве ProcessedAt
 - public void Reject() - метод меняет Status со значением Pending в Status со значнием Rejected, фиксирует время изменения статуса в свойстве ProcessedAt
+- static Booking Create(BookingRequest bookingRequest) - фабричный метод создания объекта сущности Booking.
 
 ### модель enum BookingStatus со значениями:
 - Pending = 1  — бронь создана, ожидает обработки;
@@ -387,6 +387,7 @@ dotnet run --project project
 - Event Create(EventDto eventDto) - фабричный метод создания события, валидирует обязательное поле TotalSeats : значение должно быть > 0 
 - bool TryReserveSeats(int count = 1) - метод резервирования мест. Если свободных место AvailableSeats достаточно для резервирования запрошенного количества, то возвращается true
 - void ReleaseSeats(int count = 1) - метод отката резервирования запрошенного количества мест.
+- List<Booking> Bookings - навигационное свойство для связи с сущностью Booking
 
 ### модель EventDto - используется как модель входных данных в методе CreateEvent([FromBody] EventDto eventDto) контроллера, в методе CreateEvent(EventDto eventDto) сервиса событий
 ** Состав полей: **
@@ -418,34 +419,45 @@ dotnet run --project project
 
 
 # Сервисы
+
 ## Сервис событий EventService
 - ConcurrentDictionary<Guid,Event> _events - хранилище событий
 - ConcurrentDictionary<Guid, SemaphoreSlim> _semaphoreOfEventId = new(); - словарь семафоров с ключами-идентификаторами событий. Для атомарного резервирования места по Id события в букинг-сервисе и для атомарного отката события при возникновении ошибки во время обработки букинга в фоновом процессе
 - Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct) - асинхронный метод для проверки сущещствования объекта события с Id. Метод иммитирует обращение к БД и принимает токен отмены. Возвращает булево значение
-- PaginatedResult GetAllEvents(string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10) - метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
+- Task <PaginatedResult> GetAllEvents(string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10, CancellationToken ct = default) - метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
         по заголовку (title), по Дате и времени начала события (from), по дате и времени окончания события (to), из отфильтрованной коллекции возвращает страницу с номером page, где каждая страница -- размера pageSize. По умолчанию
         page = 1 , pageSize = 10
-- EventResponse GetEventResponseById(Guid id) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
-- Event GetEventById(Guid id) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
-- EventResponse CreateEvent(EventDto eventDto)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
-- void UpdateEvent(Guid id, EventDto eventDto)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto. метод для контроллеров.
-- void UpdateEventById(Guid id, Event Event) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
-- void DeleteEvent(Guid id) - метод удаления события.
+- Task<EventResponse> GetEventResponseById(Guid id,CancellationToken ct ) - Возвращает сущность EventResponse, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище.метод для контроллеров.
+- Task<Event> GetEventByIdAsync(Guid id, CancellationToken ct) - Возвращает сущность Event, если в хранилище есть объект Event с переданным Id. Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище. метод для бизнес-логики в других сервисах -- возвращает Event
+- Task <EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct)  - метод создания сущности Event. бросает исключение ValidationException, если eventDto.TotalSeats!.Value < 0
+- public async Task UpdateEventAsync(Guid id, EventDto eventDto,CancellationToken ct)  - метод обновления события. принимает в качестве параметра Id события для обновления, EventDto,CancellationToken. метод для контроллеров.
+- Task UpdateEventByIdAsync(Guid id, Event Event,CancellationToken ct) - метод обновления события. принимает в качестве параметра Id события для обновления, Event. метод для бизнес-логики в других сервисах
+- Task DeleteEventAsync(Guid id, CancellationToken ct) - метод удаления события.
 - async Task ReleaseSeatAsync(Guid eventId) - метод для фонового процесса. метод отката.
-- async Task TryReserveSeats(Guid eventId) - атомарно резервирует одно место для события для букинг-сервиса.
+- async Task TryReserveSeatsAsync(Guid eventId, CancellationToken ct) - атомарно резервирует одно место для события для букинг-сервиса. Выбрасывает в вызывающий код исключения при отсутсвии события с Id в БД и при нехватке свобдных мест AvailableSeats
+- private AppDbContext _context -- контекс БД.
+
+
 ## Сервис бронирований BookingService
+- private AppDbContext _context -- контекс БД.
 - private readonly IBookingRepository _bookingStorage - объект хранилища объектов бронирований
 - private readonly IEventService _eventService - сервис событий
 - private readonly object _bookingLock = new() - объект для синхронизации для защиты критической секции 
-- Task<BookingResponse> CreateBookingAsync(Guid eventId) - асинхронный метод создания бронирования. для защиты критической секции использует объект _bookingLock. критическая секция: проверка существования события с помощью _eventService, резервирование билетов на событие
+- Task<BookingResponse> CreateBookingAsync(Guid eventId,CancellationToken ct  ) - асинхронный метод создания бронирования. для защиты критической секции использует объект _bookingLock. критическая секция: проверка существования события с помощью _eventService, резервирование билетов на событие
         выбрасывает исключение KeyNotFoundException в случае отсутсвия события с переданным Id. Выбрасывает исключение NoAvailableSeatsException, если нет доступных мест для резервирования.
-- Task<BookingResponse> GetBookingByIdAsync(Guid bookingId) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
+- Task<BookingResponse> GetBookingByIdAsync(Guid bookingId,CancellationToken ct ) - метод возврата объекта бронирования BookingResponse из хранилища по его Id
+
 ## Сервис фоновой обработки бронирований BookingBackgroundService
-- IBookingRepository _bookingRepository - хранилище бронирований
-- IEventService _eventRepository - хранилище событий, сервис событий
-- SemaphoreSlim _processingSemaphore = new(1, 1) - семафор для защиты критической секции. Критическая секция: проверка существования события бронирования, обработка бронирования, обновление объекта события в хранилище событий, обновление объекта бронирования в хранилище бронирований.
-- Task ProcessBookingAsync(Booking booking, CancellationToken stoppingToken) - асинхронный метод обработки одной брони. Обрабатывает следующие исключения: OperationCanceledException, ошибки обновления объекта бронирования 
-- Task ExecuteAsync(CancellationToken stoppingToken) - обрабатывает асинхронно все объекты бронирования со статусом Pending. Меняет статус броинрования с Pending на Confirmed или Reejcted.
+- фоновый сервис запускается вместе с приложением. Он предназначен для обработки объектов Booking в БД, которые имеют статус pending. Главный цикл с интервалом TimePause - приватное поле с типом TimeSpan - проверяет все записи в таблице Bookings на наличие 
+  записей со значением Status, равным pending, возвращает из БД все Id таких записей, причем эта операция извлечения списка Id осуществляется в отдельном Scope. 
+- Таким образом, в памяти есть список Id объектов Booking. Далее алгоритм разбирает все эти Id в параллельном режиме с максимальной степенью параллелизма, равной 10.
+- В цикле Parallel.ForEachAsync(...) алгоритм создает новый scope, делает запрос в ДБ, получает объект Booking.
+- Проверяет есть ли в ДБ объект Event, соответствующий этому объекту Booking, меняет статус объекта Booking, сохраняет новое стотяние в БД.
+- В ходе этих операций могут возникнуть исключения: пользователь отменил операцию, перед сохранение запись Booking удалилась.
+- Если возникли другие ошибки, то нужно откатить бронирование, то есть вернуть одно место в соответсвтующей строке Event в колонке AvailbleSeats. 
+- Приватный метод RollBackBookingAsync предназначен для того, чтобы в отдельном Scope откатить бронирование с идентификатором бронирвания и соответсвтующим идентификатором события: в одной транзакции меняет оба состяния -- Booking.Status and Event.AvailableSeats
+
+
 ## Хранилище броинирований.
 - ConcurrentDictionary<Guid, Booking> _bookings = new() - словарь для хранения объектов бронирований
 - IEnumerable<Booking> GetPending() - метод возвращает все объекты бронирований со статусов Pending
@@ -455,6 +467,35 @@ dotnet run --project project
 - void UpdateBooking(Guid bookingId, BookingDto bookingDto) - метод обновляет объект бронирования с Id = bookingId данными из bookingDto.
 - void DeleteBooking(Guid bookingId) - удаляет объект с id= bookingId из хранилища, выбрасывает KeyNotFoundException, если объекта с bookingId нет в хранилище
 - BookingResponse CreateBooking(BookingRequest bookingRequest) - создает объект бронирования в хранилище с уникальным Id, возвращает объект с информацией о созданном бронировании. 
+
+# Контекст БД
+- содержит две таблицы: Events и Bookings
+- метод OnModelCreating связывает все конфигурации к контексту.
+- DbContext подключается к провайдеру postgreSQL. Строка подключения -- из appsettings.json. DbContext регистрируется как scoped.
+
+# MiddleWare
+## ExceptionHandlingMiddleware
+- Этот MiddleWare перехватывает исключения. В зависимости от вида исключения возвращает ответ Problem Details с корректным статус кодом пользователю
+
+
+# Конфигурация (DataAccess\Configurations)
+- все конфигурации настроены отдельно от самих сущностей, а подключаются автоматически из сборки в OnModelCreating
+- конфигурация настроена в EventConfiguration : IEntityTypeConfiguration<Event>
+    - Id - PK без генерации значения
+    - Title - обязательное поле, с максимальной длиной значения 200
+    - Description - необязательное поле с максимальной длиной значения 2000
+    - StartAt - обязательное поле
+    - EndAt - обязательное поле
+    - TotalSeats - обязательное поле
+    - настроена связь с сущностью Bookings 1:N
+- конфигурация настроена в BookingConfiguration : IEntityTypeConfiguration<Booking>
+    - Id - PK без генерации значения
+    - хранение Status как строки в БД
+ 
+# контекст БД, AppDbContext: DbContext
+- Содержит два DbSet: Events и Bookings
+- в методе OnModelCreating настраивает тип Event, так чтобы свойсвто типа AvailableSeats являлось токеном конкурентности (IsConcurrencyToken), подключает все конфигурации в папке Configurations.
+
 
 
 ## глобальная обработка ошибок через кастомный Middleware.

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using project.CustomExceptions;
+using System.ComponentModel.DataAnnotations;
 
 namespace project.Models
 {
@@ -35,6 +36,18 @@ namespace project.Models
         /// </summary>
         //  при создании равно TotalSeats
         public int AvailableSeats { get; set; }
+
+        /// <summary>
+        /// навигационное свойство
+        /// </summary>
+        public List<Booking> Bookings { get; set; } = new List<Booking>();
+
+
+        //для EF Core при чтении данных из БД и последующей материализации
+        private Event() 
+        {
+            Title = null!;
+        }
 
 
         /// <summary>
@@ -81,12 +94,13 @@ namespace project.Models
         /// </summary>
         /// <param name="count">число мест для запроса на резервирования. По умолчанию 1</param>
         /// <returns> возвращает false, если свободных мест недостаточно</returns>
-        public bool TryReserveSeats(int count = 1) 
+        public void ReserveSeat()
         {
-            if (AvailableSeats < count)
-                return false;
-            AvailableSeats -= count;
-            return true;
+            if (AvailableSeats <= 0)
+            {
+                throw new NoAvailableSeatsException($"Нет доступных мест для события {this.Id}");
+            }
+            AvailableSeats--;
         }
 
 
@@ -100,7 +114,30 @@ namespace project.Models
             AvailableSeats += count;
         }
 
-      
-       
+        /// <summary>
+        /// обновить значения свойств Event из EventDto, если они не null. Используется в методе UpdateEventAsync сервиса EventService
+        /// </summary>
+        /// <param name="eventDto"></param>
+        public void UpdateFromDto(EventDto eventDto) 
+        {
+            //получить все свойства EventDto через reflection и присвоить их значения свойствам Event, если они не null
+            var eventDtoProperties = typeof(EventDto).GetProperties();
+            //пройтись в цикле по всем propertyInfo EventDto и присвоить их значения свойствам Event, если они не null
+            foreach (var property in eventDtoProperties)
+            {
+                var value = property.GetValue(eventDto);
+                if (value != null)
+                {
+                    var eventProperty = typeof(Event).GetProperty(property.Name);
+                    if (eventProperty != null)
+                    {
+                        eventProperty.SetValue(this, value);
+                    }
+                }
+            }
+        }
+
+
+
     }
 }

@@ -1,7 +1,10 @@
 
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using project.DataAccess;
 using project.Middlewares;
+using project.Repositories;
 using project.Services;
 using System.Reflection;
 
@@ -51,13 +54,20 @@ namespace project
                 };
             });
 
-            builder.Services.AddSingleton<IBookingRepository, InMemoryBookingDictionary>();
-            builder.Services.AddSingleton<IBookingService, BookingService>();
+            builder.Services.AddScoped<IEventRepository, EventRepository>();
+            builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+
+            builder.Services.AddScoped<IEventService, EventService>();
+            builder.Services.AddScoped<IBookingService, BookingService>();
+
+
+            //builder.Services.AddSingleton<IBookingRepository, InMemoryBookingDictionary>();
+       
             builder.Services.AddHostedService<BookingBackgroundService>();
 
+            // регистрация контекста
+            builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-
-            builder.Services.AddSingleton<IEventService, project.Services.EventService>();
 
             builder.Services.AddProblemDetails(); 
 
@@ -76,6 +86,11 @@ namespace project
 
 
             var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Database.EnsureCreated();
+            }
 
             app.UseMiddleware<ExceptionHandlingMiddleware>();
             //app.UseExceptionHandler();

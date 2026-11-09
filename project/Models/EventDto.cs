@@ -40,6 +40,7 @@ namespace project.Models
         //почему тип int? , а не int 
         public int? TotalSeats { get; set; }
 
+        
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             if (StartAt.HasValue && EndAt.HasValue && StartAt >= EndAt)

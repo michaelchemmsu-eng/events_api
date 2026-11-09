@@ -27,6 +27,7 @@ namespace project.Middlewares
                 {
                     //404 Not Found для ситуаций, когда ресурс не найден;
                     KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
+                    OperationCanceledException => (StatusCodes.Status499ClientClosedRequest, "Operation was cancelled"),
 
                     //409 conflict
                     NoAvailableSeatsException => (StatusCodes.Status409Conflict, "Incorrect request incoming parameter value"),
