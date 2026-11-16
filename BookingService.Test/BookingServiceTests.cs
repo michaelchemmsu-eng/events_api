@@ -696,9 +696,10 @@ namespace BookingService.Test
                 Description = "Desctription",
                 StartAt = DateTime.UtcNow.AddDays(1),
                 EndAt = DateTime.UtcNow.AddDays(3),
-                TotalSeats = 0
+                TotalSeats = 1
             };
             var eventObject = Event.Create(eventDto);
+            eventObject.AvailableSeats = 0;
             var booking = Booking.Create(new BookingRequest { EventId = eventObject.Id});
 
             //Act
