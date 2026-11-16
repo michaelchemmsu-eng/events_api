@@ -395,9 +395,8 @@ namespace BookingService.Test
             //bookingService.CreateBookingAsync -> eventService.ReserveSeatsAsync->eventRepository.GetEventByIdAsync
             //eventRepository.UpdateEvent
             //eventRepository.SaveChangesAsync
-            eventRepositoryMock.SetupSequence(r => r.GetEventByIdAsync(eventResponseId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(eventResponse)
-                .ReturnsAsync((Event?)null);
+            eventRepositoryMock.Setup(r => r.GetEventByIdAsync(eventResponseId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(eventResponse);
             var bookingResponseObject = await bookingService.CreateBookingAsync(eventResponseId);
            //Act & Assert
            NoAvailableSeatsException exception = await Assert.ThrowsAsync<NoAvailableSeatsException>(async () =>
