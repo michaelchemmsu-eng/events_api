@@ -496,7 +496,7 @@ namespace BookingService.Test
                 eventService,
                 bookingRepositoryMock.Object);
 
-            int Nseats = 0;
+            int Nseats = 1;
 
             var eventResponse = Event.Create
               (
@@ -509,6 +509,7 @@ namespace BookingService.Test
                       TotalSeats = Nseats
                   }
               );
+            eventResponse.AvailableSeats = 0;
             var eventResponseId = eventResponse.Id;
 
             //Act & Assert
@@ -522,7 +523,7 @@ namespace BookingService.Test
             eventRepositoryMock.Setup(r => r.GetEventByIdAsync(eventResponseId, It.IsAny<CancellationToken>())).ReturnsAsync(eventResponse);
             NoAvailableSeatsException exception = await Assert.ThrowsAsync<NoAvailableSeatsException>(async () =>
             {
-                await bookingService.CreateBookingAsync(eventResponseId);
+                await bookingService.CreateBookingAsync(eventResponseId, TestContext.Current.CancellationToken);
             });
 
             eventRepositoryMock.Verify(r => r.UpdateEvent(eventResponse), Times.Never);
