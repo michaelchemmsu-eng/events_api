@@ -647,13 +647,15 @@ namespace BookingService.Test
                 EndAt = DateTime.UtcNow.AddDays(3), 
                 TotalSeats = 10 }
             );
+            int expectedAvailableSeats = eventObj.AvailableSeats+1;
             eventObj.ReleaseSeats();
+            int actualAvailbaleSeats = eventObj.AvailableSeats;
             var response = await bookingService.GetBookingByIdAsync(booking.Id);
 
             // Assert проверяем, что статус стал Rejected и дата ProcessedAt заполнилась
             Assert.Equal(BookingStatus.Rejected, response.Status);
             Assert.NotNull(booking.ProcessedAt);
-            Assert.Equal(10, eventObj.AvailableSeats);
+            Assert.Equal(expectedAvailableSeats, actualAvailbaleSeats);
     }
 
 
