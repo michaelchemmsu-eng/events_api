@@ -18,7 +18,7 @@ namespace project.Services
     public class EventService:IEventService
     {
 
-       // private AppDbContext _context;//в роли Unit of Work
+  
         private readonly IEventRepository _eventRepository;
 
         public EventService(IEventRepository eventRepository)
@@ -241,7 +241,6 @@ namespace project.Services
         /// <param name="eventDto">EventDto</param>
         /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
-        // метод для контроллеров
         public async Task UpdateEventAsync(Guid id, EventDto eventDto, CancellationToken ct = default) 
         {
 
@@ -250,35 +249,13 @@ namespace project.Services
             {
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
-            var UpdatedEvent = Event.Create(eventDto);//бросает исключение, если данные не валидные 
+            var UpdatedEvent = Event.Create(eventDto);//бросает исключение, если данные не валидные
+            UpdatedEvent.Id = id;
             _eventRepository.UpdateEvent(UpdatedEvent);
             await _eventRepository.SaveChangesAsync(ct);
 
         }
 
-        /// <summary>
-        /// метод обновления события.
-        /// принимает в качестве параметра Id события для обновления, Event 
-        /// </summary>
-        /// <param name="id">ID события</param>
-        /// <param name="Event">Event</param>
-        /// <param name="ct">токен отмены</param>
-        /// <exception cref="KeyNotFoundException"></exception>
-        // метод для бизнес-логики в других сервисах
-        //public async Task UpdateEventByIdAsync(Guid id, Event Event, CancellationToken ct = default)
-        //{
-
-        //    var existingEvent = await _eventRepository.GetEventByIdAsync(id,ct);
-
-        //    if (existingEvent is null)
-        //    {
-        //        throw new KeyNotFoundException($"Event with the key {id} is not found");
-        //    }
-        //    _context.Entry(existingEvent).CurrentValues.SetValues(Event);//mapping
-        //    await _context.SaveChangesAsync(ct);
-
-
-        //}
 
         /// <summary>
         /// метод удаления события из хранилища

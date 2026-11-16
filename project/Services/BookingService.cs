@@ -11,19 +11,19 @@ namespace project.Services
 
     public class BookingService: IBookingService
     {
-        //private readonly IBookingRepository _bookingStorage;
+ 
         private readonly ILogger<BookingService> _logger;
         private readonly IEventService _eventService;
         private readonly IBookingRepository _bookingRepository;
 
-        //private readonly AppDbContext _context;
+       
         public BookingService(ILogger<BookingService> Logger, IEventService EventService, IBookingRepository BookingRepository) 
         {
-            //_bookingStorage = BookingStorage;
+
             _logger = Logger;
             _eventService = EventService;
             _bookingRepository = BookingRepository;
-            //_context = context;
+           
         }
 
         /// <summary>
@@ -37,23 +37,13 @@ namespace project.Services
         /// <exception cref="NoAvailableSeatsException"></exception>
         public async Task<BookingResponse> CreateBookingAsync(Guid eventId, CancellationToken ct = default) 
         {
-                        
-            //using var transaction = await _context.Database.BeginTransactionAsync(ct);
-            // проблема Потерянного билета
-            //  так как ниже по коду TryReserveSeatsAsync делает запрос в БД в обход ChangeTracker
-            // а SaveChangesAsync может завершится с генерацией исключения, не сохранив объект бронирования
-            // в БД, то обе операции TryReserveSeatsAsync
-            // и SaveChangesAsync нужно выполнить в одной транзакции
+             
             try
             {
-                //EventService хранит тот же экземпляр AppDbContext , как так Scope.
-               
+            
                 var NewBookingObj = Booking.Create(new BookingRequest { EventId = eventId });
                 await _bookingRepository.AddBookingAsync(NewBookingObj, ct);
                 await _eventService.ReserveSeatsAsync(eventId, ct);//либо успешно резервирует с коммитом, либо бросает исключение
-                
-               // await transaction.CommitAsync(ct);//завершаем транзакцию
-
                 return NewBookingObj.ToBookingResponse();
             }
             catch (KeyNotFoundException)
