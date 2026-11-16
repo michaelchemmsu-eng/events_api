@@ -69,6 +69,13 @@ dotnet run --project project
   "pageSizeOfCurrentPage": 0
 }
 ```
+- обращается к сервису событий EventService, вызывает метод 
+    GetAllEventsPaged (string? title, DateTime? from, DateTime? to,int page = 1, int pageSize = 10, CancellationToken ct = default) - 
+    метод получения событий с пагинацией. метод возвращает результаты из хранилища событий , фильтрует их
+    по заголовку (title), по Дате и времени начала события (from), 
+    по дате и времени окончания события (to), 
+    из отфильтрованной коллекции возвращает страницу с номером page, где каждая страница -- размера pageSize. По умолчанию
+    page = 1 , pageSize = 10. 
 
 
 
@@ -87,15 +94,37 @@ dotnet run --project project
 - в заголовке Location возвращает ссылку на ресурс брони (например, /bookings/{bookingId});
 пример запроса:
 - POST /events/3fa85f64-5717-4562-b3fc-2c963f66afa6/book
-### формат ответа при ошибке "события не найдено" (KeyNotFoundException)
-``` JSON
-{
-  "title": "Событие не найдено",
-  "status": 404,
-  "detail": "Событие с Id 3fa85f64-5717-4562-b3fc-2c963f66afa6 не найдено"
-}
-```
-### формат ответа при ошибках "No available seats for the Event"
+- BookingService.CreateBookingAsync() ->
+     Booking.Create()
+     BookingRepository.AddBookingAsync() ->
+        DbContext.Bookings.AddAsync()
+     EventService.ReserveSeatsAsync() ->
+        EventRepository.GetEventByIdAsync()
+        Event.ReserveSeat()
+        EventRepository.UpdateEvent()
+        EventRepository.SaveChangesAsync()
+    метод ReserveSeatsAsync (Guid) проверяет на наличие события по айди в БД -- бросает KeyNotFoundException, если не найдено, и
+    возвращает объект Event, если найдено. Уменьшает счетчик AvailableSeats объекта ивент в памяти на единицу.
+    в цикле пробует обновить объект Event в БД и бросает исключение NoAvailableSeatsException, если значение <=0. Пробует сохранить изменения объектов в памяти в БД (объекты букинг и ивент).
+    Таким образом, в БД отправляются две команды
+    update "Events" set
+    и
+    insert into "Bookings"
+    Event.AvailableSeats настроен, как IsConcurrencyToken(). Таким образом, если при попытке сохранения или обновления объекта Event другой поток уже изменил состояние
+    этого объекта в БД, то выбрасывается исключение DbUpdateConcurrencyException. Но свободных мест все еще может быть достаточно для резервирования. Поэтому цикл
+    обновления и сохранения повторяется. Перед следующей попыткой нужно актуализировать значение AvailableSeats в кеше контекста значением из БД. Для этого 
+    из БД достаем акутальное значение, меняем у объекта в кеше контеста значние AvailableSeats значением из БД с учетом одного зарезрвированного места, меняем 
+    оргинальное значение в EntityEntry для следующей итерации. 
+
+- формат ответа при ошибке "событие не найдено" (KeyNotFoundException):
+    ``` JSON
+    {
+      "title": "Событие не найдено",
+      "status": 404,
+      "detail": "Событие с Id 3fa85f64-5717-4562-b3fc-2c963f66afa6 не найдено"
+    }
+    ```
+- формат ответа при ошибках "No available seats for the Event"
 ``` JSON
 {
   "title": "Incorrect request incoming parameter value",
@@ -104,7 +133,7 @@ dotnet run --project project
   "instance": "/events/826d41e3-7e06-4115-a253-4c836583d98a/book"
 }
 ```
- ### формат ответа при успешном создании бронирования
+- формат ответа при успешном создании бронирования
  ``` JSON
  {
   "id": "ba45e8c6-d038-4f2a-ac18-3081288cbda1",
@@ -131,6 +160,11 @@ dotnet run --project project
 
  
 ## получить событие по id; если не найдено — вернуть корректный HTTP-ответ
+- метод контроллера принимает Guid id события и токен отмены.
+- обращается **GetEventResponseById** сервиса событий. 
+  метод сервиса событий вызывает **GetEventByIdAsync** репозитория событий. 
+  Если событие не найдено, то бросает исключение **KeyNotFoundException**, 
+  иначе возвращает объект **EventResponse**, описывающий данное событие
 * **Метод:** `GET`
 * **URL:** `/events/{Id}`
 * **Успешный ответ:** `200 OK`
@@ -202,11 +236,26 @@ dotnet run --project project
 * **Тело запроса**
 ```JSON
 {
-  "title": "string",
-  "description": "string",
-  "startAt": "2026-09-14T08:26:11.257Z",
-  "endAt": "2026-10-14T08:26:11.257Z",
-  "totalSeats": null
+  "title": "Validation Error occurred",
+  "status": 400,
+  "instance": "/events",
+  "errors": {
+    "EndAt": [
+      "Дата начала события должна быть меньше даты окончания события"
+    ],
+    "StartAt": [
+      "Дата начала события должна быть меньше даты окончания события"
+    ]
+  }
+}
+```
+* **Тело ответа:**
+```JSON
+{
+  "title": "incorrect request",
+  "status": 400,
+  "detail": "Validation error: a value for Total Seats must be positive",
+  "instance": "/events"
 }
 ```
 * **Тело ответа:**
@@ -216,8 +265,37 @@ dotnet run --project project
   "status": 400,
   "instance": "/events",
   "errors": {
-    "TotalSeats": [
-      "Необходимо указать общее количество мест на событии"
+    "Title": [
+      "Название события обязательно"
+    ]
+  }
+}
+```
+* **Тело ответа:**
+```JSON
+{
+  "title": "Validation Error occurred",
+  "status": 400,
+  "instance": "/events",
+  "errors": {
+    "EndAt": [
+      "Дата окончания события обязательно"
+    ]
+  }
+}
+```
+* **Тело ответа:**
+```JSON
+{
+  "title": "Validation Error occurred",
+  "status": 400,
+  "instance": "/events",
+  "errors": {
+    "EndAt": [
+      "Дата окончания события обязательно"
+    ],
+    "StartAt": [
+      "Дата начала события обязательно"
     ]
   }
 }
@@ -238,7 +316,19 @@ dotnet run --project project
 
 
 
+
+
+
+
 ## обновить событие целиком; если не найдено — вернуть корректный HTTP-ответ (например, 404)
+- метод принимает в качестве аргумента Guid, EventDto, CancellationToken. Метод обновляет в БД данные объекта события с переданным в качестве аргумента Id
+    данными объекта EventDto, переданного также в качестве аргумента. При этом значение столбца AvailableSeats обновляется значением свойства TotalSeats объекта EventDto
+- EventService.UpdateEventAsync ->
+    EventRepository.IsExistInRepositoryAsync ->
+        DbContext.Events.AnyAsync
+    Event.Create
+    EventRepository.UpdateEvent
+    EventRepository.SaveChangesAsync
 * **Метод:** `PUT`
 * **URL:** `/events/{Id}`
 * **Успешный ответ:** `200 OK`
@@ -258,7 +348,8 @@ dotnet run --project project
   "instance": "/events/d32ae92d-501f-4bd6-8056-a3bb1f36fd0f"
 }
 ```
-
+- ошибки валидации в привязке такие же, как в методе POST /events
+- ошибки валидации при создании Event из EventDto такие же, как в методе POST /events
 
 
 
@@ -292,6 +383,18 @@ dotnet run --project project
   "instance": "/events/d33ae92d-501f-4bd6-8056-a3bb1f36fd0f"
 }
 ```
+* **ответ в случае ошибки на стороне БД - Нарушение FK ограничения:** `409 Conflict`
+* **Тело ответа:**
+```json
+{
+  "title": "Incorrect request incoming parameter value",
+  "status": 409,
+  "detail": "Невозможно удалить событие с ID 04788b33-3cc2-450c-91bb-3171d1692bb8, так как на него уже существуют бронирования.",
+  "instance": "/events/04788b33-3cc2-450c-91bb-3171d1692bb8"
+}
+```
+
+
 
 
 
@@ -337,6 +440,10 @@ dotnet run --project project
   "instance": "/bookings/33e5c5f9-af6e-4d05-97a0-f728170bcecb"
 }
 ```
+
+
+
+
 
 
 
@@ -453,7 +560,7 @@ dotnet run --project project
 - Таким образом, в памяти есть список Id объектов Booking. Далее алгоритм разбирает все эти Id в параллельном режиме с максимальной степенью параллелизма, равной 10.
 - В цикле Parallel.ForEachAsync(...) алгоритм создает новый scope, делает запрос в ДБ, получает объект Booking.
 - Проверяет есть ли в ДБ объект Event, соответствующий этому объекту Booking, меняет статус объекта Booking, сохраняет новое стотяние в БД.
-- В ходе этих операций могут возникнуть исключения: пользователь отменил операцию, перед сохранение запись Booking удалилась.
+- В ходе этих операций могут возникнуть исключения: пользователь отменил операцию, перед сохранением запись Booking удалилась.
 - Если возникли другие ошибки, то нужно откатить бронирование, то есть вернуть одно место в соответсвтующей строке Event в колонке AvailbleSeats. 
 - Приватный метод RollBackBookingAsync предназначен для того, чтобы в отдельном Scope откатить бронирование с идентификатором бронирвания и соответсвтующим идентификатором события: в одной транзакции меняет оба состяния -- Booking.Status and Event.AvailableSeats
 

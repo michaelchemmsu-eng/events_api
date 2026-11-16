@@ -35,9 +35,15 @@ namespace project.DataAccess.Configurations
             //TotalSeats - обязательное
             builder.Property(e => e.TotalSeats).IsRequired();
 
-
+            builder.Property(e => e.AvailableSeats).IsConcurrencyToken();//для метода ReserveSeatsAsync() в EventService , чтобы избежать овербукинига
             //свять Events 1-->N Bookings
-            builder.HasMany(e => e.Bookings).WithOne(b => b.Event).HasForeignKey(b => b.EventId);
+            builder
+                .HasMany(e => e.Bookings)
+                .WithOne(b => b.Event)
+                .HasForeignKey(b => b.EventId)
+                .OnDelete(DeleteBehavior.Restrict);// при удалении события удаляются все связанные бронирования
+                                                   // настройка по умолчанию - DeleteBehavior.Cascade, что означает,
+                                                   // что при удалении события будут удалены все связанные бронирования.
 
 
         }

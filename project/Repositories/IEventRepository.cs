@@ -40,14 +40,14 @@ namespace project.Repositories
         /// <returns></returns>
         Task<Event?> GetEventByIdAsync(Guid id, CancellationToken ct = default);
 
-        
+
         /// <summary>
         /// обновить объект события в репозитории
         /// </summary>
         /// <param name="Event"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        Task UpdateEventAsync(Event Event, CancellationToken ct = default);
+        void UpdateEvent(Event Event);
         
         /// <summary>
         /// добавить объект события в репозиторий
@@ -62,14 +62,14 @@ namespace project.Repositories
         /// <param name="Event"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        Task DeleteEventAsync(Event Event, CancellationToken ct = default);
+        void DeleteEvent(Event Event);
         /// <summary>
         /// Проверяет, существует ли объект события в репозитории по его ID
         /// </summary>
         /// <param name="Id"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        Task<bool> IsExistInRepositoryAsync(Guid Id, CancellationToken ct);
+        Task<bool> IsExistInRepositoryAsync(Guid Id, CancellationToken ct = default);
 
         /// <summary>
         /// Сохраняет все внесенные изменения в одной транзакции

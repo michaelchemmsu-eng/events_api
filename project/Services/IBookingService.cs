@@ -27,5 +27,22 @@ namespace project.Services
         /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         Task<BookingResponse> GetBookingByIdAsync(Guid bookingId, CancellationToken ct = default);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="title"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="page"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        Task<List<Booking>> GetAllBookingsAsync(
+           string? title,
+           DateTime? from,
+           DateTime? to,
+           int page,
+           int pageSize,
+           CancellationToken ct = default);
     }
 }

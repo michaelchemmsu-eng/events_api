@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using project.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace project.Controllers
 {
@@ -41,6 +42,35 @@ namespace project.Controllers
                 _logger.LogError(ex, "Ошибка при получении бронирования с {bookingId}", bookingId);
                 return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
             }
+        }
+
+
+
+        /*
+        получить все объекты бронирований
+        можно передать параметры фильтрации:
+        title - заголовок события,
+        from - дата начала события
+        to - дата окончания события 
+
+         */
+        [HttpGet]
+        
+        public async Task<IActionResult> GetAllBookingsAsync(
+            [FromQuery] string? title,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            [FromQuery, Range(1, int.MaxValue, ErrorMessage = "Номер страницы должен быть не меньше 1.")] int page = 1,
+            [FromQuery, Range(1, 100, ErrorMessage = "Размер страницы должен быть от 1 до 100.")] int pageSize = 10,
+            CancellationToken ct = default
+
+            ) 
+        {
+            //у нас есть букинг сервис
+            //нужно создать спецификацию в сервисе 
+            //передать эту спецификацию в метод репозитория
+            return Ok(await _bookingService.GetAllBookingsAsync(title, from, to, page, pageSize));
+
         }
     }
 }

@@ -21,10 +21,9 @@ namespace project.Services
        // private AppDbContext _context;//в роли Unit of Work
         private readonly IEventRepository _eventRepository;
 
-        public EventService(AppDbContext context) 
+        public EventService(IEventRepository eventRepository)
         {
-            //_context = context;
-            _eventRepository = new EventRepository(context);
+            _eventRepository = eventRepository;
         }
 
 
@@ -62,10 +61,15 @@ namespace project.Services
             {
                 try
                 {
-                    await _eventRepository.UpdateEventAsync(eventItem, ct);
-                    
-                    isSaved = true;
+                    _eventRepository.UpdateEvent(eventItem);
+
+                    //update "Events" set "AvailableSeats" = x where "Id" = '...';
+                    //если другой поток удалит событие, то при попытке обновить psql выдаст 0, а EF Core -- DbUpdateConcurrencyException
+                    //но в контексте в памяти есть еще созданный объект booking, то есть 
+                    //отпарвляется так же команда insert into "Bookings". Эта команда может выбросить ошибку 
+                    //DbUpdateException при вызове команды DbContext.SaveChangesAsync();
                     await _eventRepository.SaveChangesAsync(ct);
+                    isSaved = true;
                 }
                 catch (DbUpdateConcurrencyException ex) 
                 {
@@ -78,16 +82,17 @@ namespace project.Services
                     AvailbaleSeats обновить в соответсвии с DataBase value
                     повторить попытку обновления на Current Value.
                         */
-                    //получаем объект entity , который вызвал конфликт
+                    //получаем объект entityentry , который вызвал конфликт
                     var entry = ex.Entries[0]; //Gets the entries that were involved in the error. Typically this is a single entry, but in some cases it may be zero or multiple entries.
-                    //достаем из БД данные
-                    var databaseValues = await entry.GetDatabaseValuesAsync(); //Queries the database for copies of the values of the tracked entity as they currently exist in the database
+                    //достаем из БД данные. получаем PropertyValues
+                    var databaseValues = await entry.GetDatabaseValuesAsync(ct); //Queries the database for copies of the values of the tracked entity as they currently exist in the database
 
                     if (databaseValues is null)
                     {
                         throw new KeyNotFoundException($"Событие {eventId} было удалено другим пользователем.");
                     }
 
+                    //поулчаем значение конкретного проперти AvailableSeats, которое сейчас в БД
                     int currentDbSeats = (int)databaseValues[nameof(Event.AvailableSeats)]!;
 
                     if (currentDbSeats <= 0)
@@ -97,6 +102,11 @@ namespace project.Services
 
                     eventItem.AvailableSeats = currentDbSeats - 1;
                     entry.OriginalValues.SetValues(databaseValues);//Original values are the values that were originally
+                }
+                catch (DbUpdateException)
+                {
+                    // Если во время сохранения брони событие было удалено другим потоком 
+                    throw new KeyNotFoundException($"Событие {eventId} было удалено другим пользователем.");
                 }
             }
             if (!isSaved)
@@ -217,7 +227,7 @@ namespace project.Services
         /// <returns></returns>
         public async Task <EventResponse> CreateEventAsync(EventDto eventDto, CancellationToken ct = default) 
         {
-            var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value < 0
+            var newEvent = Event.Create(eventDto);//бросает исключение, если eventDto.TotalSeats!.Value <= 0
             await _eventRepository.AddEventAsync(newEvent, ct);
             await _eventRepository.SaveChangesAsync(ct);
             return newEvent.ToEventResponse();
@@ -235,14 +245,13 @@ namespace project.Services
         public async Task UpdateEventAsync(Guid id, EventDto eventDto, CancellationToken ct = default) 
         {
 
-            var existingEvent = await _eventRepository.GetEventByIdAsync(id, ct);
-            if (existingEvent is null) 
+            var IsExists = await _eventRepository.IsExistInRepositoryAsync(id, ct);
+            if (!IsExists) 
             {
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
-            
-            existingEvent.UpdateFromDto(eventDto);
-            await _eventRepository.UpdateEventAsync(existingEvent,ct);
+            var UpdatedEvent = Event.Create(eventDto);//бросает исключение, если данные не валидные 
+            _eventRepository.UpdateEvent(UpdatedEvent);
             await _eventRepository.SaveChangesAsync(ct);
 
         }
@@ -279,13 +288,22 @@ namespace project.Services
         /// <exception cref="KeyNotFoundException"></exception>
         public async Task DeleteEventAsync(Guid id, CancellationToken ct) 
         {
+            //делать или не делать .Include(e => e.Bookings) -- вот в чем вопрос
             var existingEvent = await _eventRepository.GetEventByIdAsync(id, ct);
             if (existingEvent is null)
             {
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
             }
-            await _eventRepository.DeleteEventAsync(existingEvent, ct);
-            await _eventRepository.SaveChangesAsync(ct);
+            try
+            {
+                _eventRepository.DeleteEvent(existingEvent);
+                //елси на событие ссылается объект букинга, то выбросит ошибку DbUpdateException. См на конфигурацию.
+                await _eventRepository.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) 
+            {
+                throw new InvalidOperationException( $"Невозможно удалить событие с ID {id}, так как на него уже существуют бронирования.", ex);
+            }
 
 
         }

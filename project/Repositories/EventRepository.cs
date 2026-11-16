@@ -23,7 +23,7 @@ namespace project.Repositories
         }
 
 
-        public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct)
+        public async Task<bool> IsExistInRepositoryAsync(Guid id, CancellationToken ct = default)
         {
             bool IsExist = await _context.Events.AnyAsync(e => e.Id == id, ct);
             return IsExist;
@@ -46,13 +46,13 @@ namespace project.Repositories
         }
 
     
-        public async Task UpdateEventAsync(Event Event, CancellationToken ct = default)
+        public void UpdateEvent(Event Event)
         {
             _context.Events.Update(Event);
             //await _context.SaveChangesAsync(ct);
         }
 
-        public async Task DeleteEventAsync(Event Event, CancellationToken ct = default)
+        public void DeleteEvent(Event Event)
         {
             _context.Events.Remove(Event);
             //await _context.SaveChangesAsync(ct);

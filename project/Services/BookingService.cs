@@ -1,8 +1,11 @@
-﻿using project.CustomExceptions;
-using project.Models;
-using project.DataAccess;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using project.CustomExceptions;
+using project.DataAccess;
+using project.Models;
 using project.Repositories;
+using project.Services.Specifications;
+using System.ComponentModel.DataAnnotations;
 namespace project.Services
 {
 
@@ -14,7 +17,7 @@ namespace project.Services
         private readonly IBookingRepository _bookingRepository;
 
         //private readonly AppDbContext _context;
-        public BookingService(ILogger<BookingService> Logger, IEventService EventService, IBookingRepository BookingRepository, AppDbContext context) 
+        public BookingService(ILogger<BookingService> Logger, IEventService EventService, IBookingRepository BookingRepository) 
         {
             //_bookingStorage = BookingStorage;
             _logger = Logger;
@@ -44,10 +47,11 @@ namespace project.Services
             try
             {
                 //EventService хранит тот же экземпляр AppDbContext , как так Scope.
+               
                 var NewBookingObj = Booking.Create(new BookingRequest { EventId = eventId });
                 await _bookingRepository.AddBookingAsync(NewBookingObj, ct);
-                await _eventService.ReserveSeatsAsync(eventId,ct);//либо успешно резервирует с коммитом, либо бросает исключение
-
+                await _eventService.ReserveSeatsAsync(eventId, ct);//либо успешно резервирует с коммитом, либо бросает исключение
+                
                // await transaction.CommitAsync(ct);//завершаем транзакцию
 
                 return NewBookingObj.ToBookingResponse();
@@ -84,7 +88,7 @@ namespace project.Services
             try
             {
                 var existingBooking = await _bookingRepository.GetBookingByIdAsync(bookingId, ct);
-                if (existingBooking is null)
+                if (existingBooking is not null)
                     return existingBooking!.ToBookingResponse();
                 else 
                     throw new KeyNotFoundException($"Бронирование с идентификатором {bookingId} не найдено");
@@ -106,6 +110,20 @@ namespace project.Services
                 throw;
             }
 
+        }
+
+
+        public async Task<List<Booking>> GetAllBookingsAsync(
+           string? title,
+           DateTime? from,
+           DateTime? to,
+           int page,
+           int pageSize,
+           CancellationToken ct = default)
+        {
+            //создаем спецификацию для фильтрации
+            var spec = new BookingSearchSpecification(title, from, to, page, pageSize);
+            return await _bookingRepository.GetAllBookingsFilteredAsync(spec, ct);
         }
     }
 }

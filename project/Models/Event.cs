@@ -135,6 +135,10 @@ namespace project.Models
                     }
                 }
             }
+            //можно было бы просто присвоить
+            var eventPropertyAvailableSeats = typeof(Event).GetProperty("AvailableSeats");
+            eventPropertyAvailableSeats?.SetValue(this, eventDto.TotalSeats);
+
         }
 
 

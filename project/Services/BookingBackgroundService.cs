@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using project.DataAccess;
 using project.Models;
+using project.Repositories;
+using project.Services.Specifications;
 
 namespace project.Services
 {
@@ -17,9 +19,9 @@ namespace project.Services
      */
     public class BookingBackgroundService: BackgroundService
     {
-        private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IServiceScopeFactory _scopeFactory; // производитель скоупов.
         private readonly ILogger<BookingBackgroundService> _logger;
-        private static readonly TimeSpan TimePause = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan TimePause = TimeSpan.FromSeconds(30);// время задержки перед следующей итерацией цикла в методе ExecuteAsync
 
         public BookingBackgroundService (IServiceScopeFactory scopeFactory, ILogger<BookingBackgroundService> logge )
         {
@@ -62,22 +64,22 @@ namespace project.Services
         Сейчас в БД хранятся объекты букинг со статусом пендинг
         Фоновый сервис обрабатывает объекты букинг со статусов пендинг
 
-        
          */
         private async Task ProcessBookingsAsync(CancellationToken ct)
         {
-            List<Guid> pendingBookingIds;
+            //получаем все pending бронирования из БД
+            List<Guid> pendingBookingIds = new List<Guid>();
             using (var scope = _scopeFactory.CreateScope()) 
             {
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                pendingBookingIds = await context.Bookings
-                            .Where(b => b.Status == BookingStatus.Pending)
-                            .Select(b => b.Id)
-                            .ToListAsync(ct);//запрос. может вылететь excpetion
+                var bookingRepository = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+        
+                pendingBookingIds = await bookingRepository.GetPendingBookingIds(ct);
             }
             if (!pendingBookingIds.Any())
                 return;
 
+
+            //параллельная обработка всех pending бронирований
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = 10, // Защита от перегрузки БД
@@ -85,14 +87,13 @@ namespace project.Services
             };
             await Parallel.ForEachAsync(pendingBookingIds, parallelOptions, async (bookingId, ct) => 
             {
-                //создаем scope и получаем appdbcontext
+                //создаем scope и получаем booking repository
                 using (var scope = _scopeFactory.CreateScope()) 
                 {
-                    
-                    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-                    var booking = await context.Bookings.
-                        FirstOrDefaultAsync(b => b.Id == bookingId, ct);
+                    var bookingRepository = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+
+                    var booking = await bookingRepository.GetBookingByIdAsync(bookingId, ct);
 
                     if (booking is null)
                     {
@@ -102,8 +103,11 @@ namespace project.Services
                     Guid currentEventId = booking.EventId;
 
                     try 
-                    { 
-                        bool eventExists = await context.Events.AnyAsync(e => e.Id == booking!.EventId, ct);
+                    {
+                        //сломалась одна конкретная бронь, то мы логируем ошибку и откатываем изменения по этой брони,
+                        //но не прерываем обработку других бронирований
+                        var eventRepository = scope.ServiceProvider.GetRequiredService<IEventRepository>();
+                        bool eventExists = await eventRepository.IsExistInRepositoryAsync(booking!.EventId, ct);
                         if (eventExists)
                         {
                             booking!.Confirm();
@@ -117,7 +121,7 @@ namespace project.Services
                         // либо Event не удалится, либо сработает каскадное удаление -- удалится booking, который ссылается на этот удаляющийся Event
                         //допустим сработало каскадное удаление и объекта booking, который сейчас хранится в памяти, нет в БД
                         // UPDATE Bookings Set Status = BookingsStatus.Confirmed Where Id = bookingId и EF Core выбросит ошибку
-                        await context.SaveChangesAsync(ct);
+                        await bookingRepository.SaveChangesAsync(ct);
 
                     }
                     catch (OperationCanceledException)

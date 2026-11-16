@@ -138,13 +138,13 @@ namespace project.Controllers
         /// <param name="ct">токен отмены</param>
         /// <returns></returns>
         [HttpPost]
-        public ActionResult<EventResponse> CreateEventAsync([FromBody] EventDto eventDto, CancellationToken ct = default) 
+        public async Task <ActionResult<EventResponse>> CreateEventAsync([FromBody] EventDto eventDto, CancellationToken ct = default) 
         {
             _logger.LogInformation("Вызов метода CreateEvent для создания нового события");
             //var newId = Guid.NewGuid();
             try
             {
-                var newEvent = _eventService.CreateEventAsync(eventDto); //бросает исключение, если eventDto.TotalSeats!.Value < 0
+                var newEvent = await _eventService.CreateEventAsync(eventDto); //бросает исключение, если eventDto.TotalSeats!.Value < 0
                 return CreatedAtAction
                  (
                      nameof(GetEventById),
@@ -154,11 +154,14 @@ namespace project.Controllers
             }
             catch (ValidationException ex)
             {
-                var validationProbllemClassObject = new ValidationProblemDetails(new Dictionary<string, string[]>
-                {
-                    {"TotalSeats",new[]{"Value must be greater than or equal to 0"} }
-                });
-                return ValidationProblem(validationProbllemClassObject);
+                //var validationProbllemClassObject = new ValidationProblemDetails(new Dictionary<string, string[]>
+                //{
+                //    {"TotalSeats",new[]{"Value must be greater than or equal to 0"} }
+                //});
+
+                //return ValidationProblem(validationProbllemClassObject);
+                
+                throw;
             }
 
 
