@@ -35,6 +35,14 @@ namespace EventApi.IntegrationTests
             await context.Database.EnsureCreatedAsync();
         }
 
+
+
+
+
+
+
+
+
         [Fact]
         //тест проверяет, что метод IsExistInRepositoryAsync возвращает false для несуществующего идентификатора события.
         public async Task IsExistInRepository_NonExsitentEventId_False()

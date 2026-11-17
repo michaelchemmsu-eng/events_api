@@ -10,6 +10,8 @@ namespace EventApi.IntegrationTests
 {
     public class BookingRepositoryTest: IAsyncLifetime
     {
+
+        private record FKInfo(string conrelid, string confrelid, string contype, string confdeltype);
         private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
          .WithDatabase("eventapi")
          .Build();
@@ -24,7 +26,7 @@ namespace EventApi.IntegrationTests
                 .Options;
 
             var context = new AppDbContext(options);
-            context.Database.EnsureCreated();
+            //context.Database.EnsureCreated();
             return context;
         }
         private async Task ResetDatabaseAsync()
@@ -32,7 +34,8 @@ namespace EventApi.IntegrationTests
             NpgsqlConnection.ClearAllPools();
             await using var context = CreateContext();
             await context.Database.EnsureDeletedAsync();
-            await context.Database.EnsureCreatedAsync();
+            
+            await context.Database.MigrateAsync();
         }
 
 
@@ -41,6 +44,68 @@ namespace EventApi.IntegrationTests
 
 
 
+        [Fact]
+
+        public async Task CheckIfTableExistAfterMigration_AllTableNamesMustPresent()
+        {
+            //после миграции создаются таблицы по схеме и одна таблица __EFMigrationsHistory
+            //чтобы узнать , что таблицы создались, делаем прямой запрос к information_schema.tables,
+            //возвращаем table_name
+            //Arrange
+            await ResetDatabaseAsync();
+            var context = CreateContext();
+            string sqlQuery = $"""Select table_name from information_schema.tables where table_schema = 'public'""";
+            var listOFTables = await context.Database.SqlQueryRaw<string>(sqlQuery).ToListAsync();
+            var listOFExpectedTables = new List<string> { "Events", "Bookings", "__EFMigrationsHistory" };
+            Assert.All(listOFExpectedTables, (tableName) => Assert.Contains(tableName, listOFTables));
+        }
+
+        [Fact]
+        /*
+         после Migrate проверяет записи в __EFMigrationsHistory, 
+         */
+        public async Task Check__EFMigrationsHistoryAfterMigration_MigrationResultInNotEmptyTable()
+        {
+            //после миграции создаются таблицы по схеме и одна таблица __EFMigrationsHistory
+            //чтобы узнать , что таблицы создались, делаем прямой запрос к information_schema.tables,
+            //возвращаем table_name
+            //Arrange
+            await ResetDatabaseAsync();
+            var context = CreateContext();
+            string sqlQuery = $"""Select "MigrationId" from "__EFMigrationsHistory" """;
+            //act
+            var listOFTables = await context.Database.SqlQueryRaw<string>(sqlQuery).ToListAsync();
+            //assert
+            Assert.NotEmpty(listOFTables);
+
+        }
+
+
+
+
+        //внешний ключ между Bookings и Events с правилом удаления RESTRICT
+        /*
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = 'имя_таблицы'
+            ORDER BY ordinal_position;
+        select column_name from information_schema.columns where table_name = 'pg_constraint';
+         */
+        [Fact]
+        public async Task CheckFKConstraint_CheckOnDeleteRestrict()
+        {
+            //таблица pg_constrain
+            //select conrelid::regclass, confrelid::regclass,contype,confdeltype from pg_constraint where contype = 'f'
+            // arrange
+            await ResetDatabaseAsync();
+            var context = CreateContext();
+            string sqlQuery = $""" select conrelid::regclass::text, confrelid::regclass::text,contype::text,confdeltype::text from pg_constraint where contype = 'f' """;
+            
+            //act
+            var res = await context.Database.SqlQueryRaw<FKInfo>(sqlQuery).ToListAsync();
+            //assert
+            Assert.Contains(new FKInfo (conrelid : "\"Bookings\"", confdeltype: "r", confrelid :"\"Events\"", contype : "f" ), res);
+        }
 
 
 
