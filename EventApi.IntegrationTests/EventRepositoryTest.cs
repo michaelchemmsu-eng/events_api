@@ -8,39 +8,17 @@ using Testcontainers.PostgreSql;
 
 namespace EventApi.IntegrationTests
 {
-    public class EventRepositoryTest: IAsyncLifetime
+    [Collection("PostgresContainer collection")]
+    public class EventRepositoryTest
     {
-        private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-           .WithDatabase("eventapi")
-           .Build();
+        private readonly PostgresContainerFixture _postgresContainerFixture;
+        private Task ResetDatabaseAsync() => _postgresContainerFixture.ResetDatabaseAsync();
+        private AppDbContext CreateContext() => _postgresContainerFixture.CreateContext();
 
-        public async ValueTask InitializeAsync() => await _postgres.StartAsync();
-        public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
-
-        private AppDbContext CreateContext() 
+        public EventRepositoryTest(PostgresContainerFixture containerFixture) 
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(_postgres.GetConnectionString())
-                .Options;
-
-            var context = new AppDbContext(options);
-            context.Database.EnsureCreated();
-            return context;
+            _postgresContainerFixture = containerFixture;
         }
-        private async Task ResetDatabaseAsync() 
-        {
-            NpgsqlConnection.ClearAllPools(); 
-            await using var context = CreateContext();
-            await context.Database.EnsureDeletedAsync();
-            await context.Database.EnsureCreatedAsync();
-        }
-
-
-
-
-
-
-
 
 
         [Fact]

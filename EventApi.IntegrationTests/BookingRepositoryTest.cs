@@ -8,34 +8,19 @@ using Testcontainers.PostgreSql;
 
 namespace EventApi.IntegrationTests
 {
-    public class BookingRepositoryTest: IAsyncLifetime
+    [Collection("PostgresContainer collection")]
+    public class BookingRepositoryTest
     {
 
         private record FKInfo(string conrelid, string confrelid, string contype, string confdeltype);
-        private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-         .WithDatabase("eventapi")
-         .Build();
 
-        public async ValueTask InitializeAsync() => await _postgres.StartAsync();
-        public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
+        private readonly PostgresContainerFixture _postgresContainerFixture;
+        private Task ResetDatabaseAsync() => _postgresContainerFixture.ResetDatabaseAsync();
+        private AppDbContext CreateContext() => _postgresContainerFixture.CreateContext();
 
-        private AppDbContext CreateContext()
+        public BookingRepositoryTest(PostgresContainerFixture containerFixture)
         {
-            var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseNpgsql(_postgres.GetConnectionString())
-                .Options;
-
-            var context = new AppDbContext(options);
-            //context.Database.EnsureCreated();
-            return context;
-        }
-        private async Task ResetDatabaseAsync()
-        {
-            NpgsqlConnection.ClearAllPools();
-            await using var context = CreateContext();
-            await context.Database.EnsureDeletedAsync();
-            
-            await context.Database.MigrateAsync();
+            _postgresContainerFixture = containerFixture;
         }
 
 
@@ -71,7 +56,7 @@ namespace EventApi.IntegrationTests
             //возвращаем table_name
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            await using var context = CreateContext();
             string sqlQuery = $"""Select "MigrationId" from "__EFMigrationsHistory" """;
             //act
             var listOFTables = await context.Database.SqlQueryRaw<string>(sqlQuery).ToListAsync();
