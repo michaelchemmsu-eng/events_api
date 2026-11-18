@@ -40,11 +40,11 @@ namespace project.Services.EventSpecificator
         /// </summary>
 
         public int? Skip { get; private set; }
-        
+
         /// <summary>
         /// флаг , указывающий, что результат пагинирован
         /// </summary>
-        public bool IsPagingEnabled { get; private set; }
+        public bool IsPagingEnabled { get; private set; } = false;
         /// <summary>
         /// метод, который включает выражение для подгрузки связанных данных
         /// </summary>

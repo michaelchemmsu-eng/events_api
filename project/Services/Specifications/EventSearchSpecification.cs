@@ -13,9 +13,9 @@ namespace project.Services.Specifications
     public class EventSearchSpecification: Specification<Event>
     {
         public EventSearchSpecification(
-            string? title,
-            DateTime? from, DateTime? to,
-            int? page, int? pageSize)
+            string? title =null,
+            DateTime? from = null, DateTime? to = null,
+            int? page = null, int? pageSize = null)
         {
             if (page.HasValue)
             {
@@ -33,7 +33,10 @@ namespace project.Services.Specifications
                 (!to.HasValue || e.EndAt <= to.Value);
             OrderBy = e => e.StartAt;
             ThenBy = e => e.Id; // это нужно, чтобы при одинаковых StartAt события сортировались по Id, иначе будет ошибка при пагинации
-            ApplyPaging(checked((page!.Value - 1) * pageSize!.Value), pageSize!.Value);
+
+            
+            if (page.HasValue && pageSize.HasValue)
+                ApplyPaging(checked((page!.Value - 1) * pageSize!.Value), pageSize!.Value);
         }
     }
 
