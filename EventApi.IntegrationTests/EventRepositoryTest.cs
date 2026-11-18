@@ -192,8 +192,8 @@ namespace EventApi.IntegrationTests
         }
 
         [Fact]
-        // проверяет, что метод AddEventAsync добавляет объект существующего в БД события. При сохранении изменений в БД (SaveChangesAsync) выбрасывается исключение DbUpdateConcurrencyException, так как объект уже существует в БД.
-        public async Task AddEventAsync_AddsExistentEvent_DbUpdateConcurrencyExceptionWhenSaveChagesAsyncInvoced() { 
+        // проверяет, что метод AddEventAsync добавляет объект существующего в БД события. При сохранении изменений в БД (SaveChangesAsync) выбрасывается исключение DbUpdateException, так как объект уже существует в БД.
+        public async Task AddEventAsync_AddsExistentEvent_DbUpdateExceptionWhenSaveChagesAsyncInvoced() { 
             //Arrange
             await ResetDatabaseAsync();
             using var context = CreateContext();
@@ -213,6 +213,10 @@ namespace EventApi.IntegrationTests
             using var contextAssert = CreateContext();
             var eventRepositoryAssert = new EventRepository(contextAssert);
             await eventRepositoryAssert.AddEventAsync(EventObjext, TestContext.Current.CancellationToken);
+            //нарушение правил таблицы  - это DbUpdateException 
+            //пропажи строки при обновлении/удалении -- DbUpdateConcurrencyException.
+            //INSERT INTO "Events" -- вызывает нарушение правилы уникальности Первичного Ключа
+            //ошибку ограничений базы данных EF Core всегда оборачивает в базовый DbUpdateException
             await Assert.ThrowsAsync<DbUpdateException>(() => eventRepositoryAssert.SaveChangesAsync(TestContext.Current.CancellationToken));
 
         }
