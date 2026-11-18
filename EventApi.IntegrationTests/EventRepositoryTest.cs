@@ -25,6 +25,127 @@ namespace EventApi.IntegrationTests
 
 
 
+
+
+        [Fact]
+        //проверяем что результат фильтрации отсортирован по OrderBy = e => e.StartAt; ThenBy = e => e.Id;
+        public async Task ListEventsFilteredPagedAsync_ReturnsEventsOrderedByStartAtAndThenById() 
+        {
+            //Arrange
+            await ResetDatabaseAsync();
+            var context = CreateContext();
+            var eventRepository = new EventRepository(context);
+            string TitleForSpec = "SHREK 1";
+            DateTime CurrentTime = DateTime.UtcNow;
+
+            var FilterByFromSpec = new EventSearchSpecification();
+            //Arrange
+            //SHREK
+            var EventDto1 = new EventDto
+            {
+                Title = TitleForSpec,
+                Description = "3D",
+                StartAt = CurrentTime.AddHours(1),
+                EndAt = CurrentTime.AddHours(3),
+                TotalSeats = 50
+            };
+
+
+            var EventDto2 = new EventDto
+            {
+                Title = TitleForSpec,
+                Description = "2D",
+                StartAt = CurrentTime.AddHours(2),
+                EndAt = CurrentTime.AddHours(4),
+                TotalSeats = 50
+            };
+            var EventDto3 = new EventDto
+            {
+                Title = TitleForSpec,
+                Description = "3D IMAX",
+                StartAt = CurrentTime.AddHours(5),
+                EndAt = CurrentTime.AddHours(7),
+                TotalSeats = 50
+            };
+
+
+            //SPIDER-NOIR
+            var EventDto4 = new EventDto
+            {
+                Title = "SPIDER-NOIR",
+                Description = "2D",
+                StartAt = CurrentTime.AddHours(3),
+                EndAt = CurrentTime.AddHours(5),
+                TotalSeats = 50
+            };
+            var EventDto5 = new EventDto
+            {
+                Title = "SPIDER-NOIR",
+                Description = "3D",
+                StartAt = CurrentTime.AddHours(4),
+                EndAt = CurrentTime.AddHours(6),
+                TotalSeats = 50
+            };
+            var EventDto6 = new EventDto
+            {
+                Title = "SPIDER-NOIR",
+                Description = "3D IMAX",
+                StartAt = CurrentTime.AddHours(5),
+                EndAt = CurrentTime.AddHours(7),
+                TotalSeats = 50
+            };
+
+            var Event1 = Event.Create(EventDto1);
+            var Event2 = Event.Create(EventDto2);
+            var Event3 = Event.Create(EventDto3);
+            var Event4 = Event.Create(EventDto4);
+            var Event5 = Event.Create(EventDto5);
+            var Event6 = Event.Create(EventDto6);
+            //порядок ожидается такой : Event1->Event2->Event4->Event5->(Event3|Event6) последние два ивента по Id
+            //для проверки порядка нам нужны поля StartAt и Id
+            var expectedList = new List<Event> { Event1, Event2, Event4, Event5};
+            if (Event3.Id < Event6.Id)
+            {
+                expectedList.AddRange(Event3,Event6);
+            }
+            else 
+            {
+                expectedList.AddRange(Event6, Event3);
+            }
+
+            await eventRepository.AddEventAsync(Event1, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event2, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event3, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event4, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event5, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event6, TestContext.Current.CancellationToken);
+
+            await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //act and assert
+
+            var contextAct = CreateContext();
+            var eventRepositoryAct = new EventRepository(contextAct);
+            var actualList = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
+            Assert.NotEmpty(actualList);
+            Assert.Equal(6, actualList.Count);
+            //в C# DateTime.UtcNow и точность -- 7 знаков после запятой в секундах
+            //В PostgreSQL timestamptz время хранится с точностью до микросекунд и точность --  6 знаков после запятой.
+            Assert.Equal(expectedList.Select(e=>e.StartAt).ToList(), actualList.Select(e=>e.StartAt).ToList(), (expected, actual) => (expected - actual).Duration() <= TimeSpan.FromMicroseconds(1));
+            Assert.Equal(expectedList.Select(e => e.Id).ToList(), actualList.Select(e => e.Id).ToList());
+
+
+        }
+
+
+
+
+
+
+
+
+
+
         //создаем объект спецификации EventSearchSpesicifation, в котором определим 
         //правила фильтрации. В Критерии фильтрации заданы только page and pageSize
         [Fact]
