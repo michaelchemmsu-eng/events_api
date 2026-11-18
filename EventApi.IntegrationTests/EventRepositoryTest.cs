@@ -25,7 +25,7 @@ namespace EventApi.IntegrationTests
 
 
         //создаем объект спецификации EventSearchSpesicifation, в котором определим 
-        //правила фильтрации[]
+        //правила фильтрации.
         [Fact]
         public async Task ListEventsFilteredPagedAsync_FilteringByTitle_FilteredEvents() 
         {
@@ -115,6 +115,29 @@ namespace EventApi.IntegrationTests
             Assert.NotEmpty(ListOfFilteredEvents);
             Assert.Equal(3, ListOfFilteredEvents.Count);
             Assert.All(ListOfFilteredEvents, (e) => Assert.Equal(TitleForSpec, e.Title));
+        }
+
+
+
+
+
+
+        //создаем объект спецификации EventSearchSpesicifation, в котором определим 
+        //правила фильтрации
+        [Fact]
+        public async Task ListEventsFilteredPagedAsync_FilteringByTitleEmptyDB_EmptyList()
+        {
+            //Arrange
+            await ResetDatabaseAsync();
+            string TitleForSpec = "SHREK 1";
+            var FilterByTitleSpec = new EventSearchSpecification(TitleForSpec);
+            
+            //act and assert
+            var contextAct = CreateContext();
+            var eventRepositoryAct = new EventRepository(contextAct);
+            var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByTitleSpec, TestContext.Current.CancellationToken);
+            Assert.Empty(ListOfFilteredEvents);
+
         }
 
 
