@@ -26,9 +26,7 @@ namespace EventApi.IntegrationTests
 
 
         //создаем объект спецификации EventSearchSpesicifation, в котором определим 
-        //правила фильтрации. Фильтрация по To and Title. фильтр такой : e.StartAt >= from.Value, e.EndAt <= to.Value
-        // и Title
-        //результаты сортируются так:  OrderBy = e => e.StartAt; ThenBy = e => e.Id;
+        //правила фильтрации. В Критерии фильтрации заданы только page and pageSize
         [Fact]
         public async Task ListEventsFilteredPagedAsync_NotFilteredButPaged_PagedEvents()
         {
@@ -148,7 +146,7 @@ namespace EventApi.IntegrationTests
 
 
         //создаем объект спецификации EventSearchSpesicifation, в котором определим 
-        //правила фильтрации. Фильтрация по To and Title. фильтр такой : e.StartAt >= from.Value, e.EndAt <= to.Value
+        //правила фильтрации. Фильтрация по To, From and Title. фильтр такой : e.StartAt >= from.Value, e.EndAt <= to.Value
         // и Title
         [Fact]
         public async Task ListEventsFilteredPagedAsync_FilteringByFromToTitle_FilteredEvents()
@@ -261,7 +259,7 @@ namespace EventApi.IntegrationTests
 
 
         //создаем объект спецификации EventSearchSpesicifation, в котором определим 
-        //правила фильтрации. Фильтрация по To and Title. фильтр такой : e.StartAt >= from.Value
+        //правила фильтрации. Фильтрация по From and Title. фильтр такой : e.StartAt >= from.Value
         // и Title
         [Fact]
         public async Task ListEventsFilteredPagedAsync_FilteringByFromAndTitle_FilteredEvents()
