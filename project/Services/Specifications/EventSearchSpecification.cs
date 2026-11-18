@@ -31,6 +31,7 @@ namespace project.Services.Specifications
                 (string.IsNullOrEmpty(title) || e.Title.ToLower().Contains(title.ToLower())) &&
                 (!from.HasValue || e.StartAt >= from.Value) && //если HasValue true, то фильтруем по StartAt >= from.Value, иначе не фильтруем по StartAt
                 (!to.HasValue || e.EndAt <= to.Value);
+
             OrderBy = e => e.StartAt;
             ThenBy = e => e.Id; // это нужно, чтобы при одинаковых StartAt события сортировались по Id, иначе будет ошибка при пагинации
 
