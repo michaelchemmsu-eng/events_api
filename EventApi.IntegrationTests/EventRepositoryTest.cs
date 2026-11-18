@@ -103,20 +103,34 @@ namespace EventApi.IntegrationTests
             await context.Bookings.AddRangeAsync(BookingObject1,BookingObject2);
             await context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-            //Act
+            //Act and assert
             using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
-            eventRepositoryAct.DeleteEvent(EventObjext);
-            await eventRepositoryAct.SaveChangesAsync(TestContext.Current.CancellationToken);
+            var eventToDelete = await eventRepositoryAct.GetEventByIdAsync(EventObjext.Id, TestContext.Current.CancellationToken);
+            eventRepositoryAct.DeleteEvent(eventToDelete!);
+            await Assert.ThrowsAsync<DbUpdateException>( () => eventRepositoryAct.SaveChangesAsync(TestContext.Current.CancellationToken));
 
-            //assert
+            //Arrange
+            using var contextArrange = CreateContext();
+            var bookingRepository = new BookingRepository(contextArrange);
+            var BookingToDelete1 = await bookingRepository.GetBookingByIdAsync(BookingObject1.Id, TestContext.Current.CancellationToken);
+            var BookingToDelete2 = await bookingRepository.GetBookingByIdAsync(BookingObject2.Id, TestContext.Current.CancellationToken);
+            await bookingRepository.DeleteBookingAsync(BookingToDelete1!, TestContext.Current.CancellationToken);
+            await bookingRepository.DeleteBookingAsync(BookingToDelete2!, TestContext.Current.CancellationToken);
+            await bookingRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //Act
+            using var contextAct1 = CreateContext();
+            var eventRepositoryAct1 = new EventRepository(contextAct1);
+            eventToDelete = await eventRepositoryAct1.GetEventByIdAsync(EventObjext.Id, TestContext.Current.CancellationToken);
+            eventRepositoryAct1.DeleteEvent(eventToDelete!);
+            await eventRepositoryAct1.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //Assert
             using var contextAssert = CreateContext();
             var eventRepositoryAssert = new EventRepository(contextAssert);
             var result = await eventRepositoryAssert.IsExistInRepositoryAsync(EventObjext.Id, TestContext.Current.CancellationToken);
             Assert.False(result);
-            //настройки ограничиения FK по умолчанию -- DELETE CASCADE
-            var ListOfBookings = await contextAssert.Bookings.ToListAsync(TestContext.Current.CancellationToken);
-            Assert.Empty(ListOfBookings);
 
         }
 
