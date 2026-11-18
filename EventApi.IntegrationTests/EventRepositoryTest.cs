@@ -23,6 +23,105 @@ namespace EventApi.IntegrationTests
 
 
 
+        //создаем объект спецификации EventSearchSpesicifation, в котором определим 
+        //правила фильтрации. Фильтрация по From
+        [Fact]
+        public async Task ListEventsFilteredPagedAsync_FilteringByFrom_FilteredEvents()
+        {
+            //Arrange
+            await ResetDatabaseAsync();
+            var context = CreateContext();
+            var eventRepository = new EventRepository(context);
+            string TitleForSpec = "SHREK 1";
+            DateTime CurrentTime = DateTime.UtcNow;
+            DateTime TimeForFiltering = CurrentTime.AddHours(-3);
+            var FilterByFromSpec = new EventSearchSpecification(from: TimeForFiltering);
+            //Arrange
+            //SHREK
+            var EventDto1 = new EventDto
+            {
+                Title = TitleForSpec,
+                Description = "3D",
+                StartAt = CurrentTime.AddHours(-4),
+                EndAt = CurrentTime,
+                TotalSeats = 50
+            };
+
+
+            var EventDto2 = new EventDto
+            {
+                Title = TitleForSpec,
+                Description = "2D",
+                StartAt = CurrentTime.AddHours(-4),
+                EndAt = CurrentTime,
+                TotalSeats = 50
+            };
+            var EventDto3 = new EventDto
+            {
+                Title = TitleForSpec,
+                Description = "3D IMAX",
+                StartAt = CurrentTime.AddHours(-4),
+                EndAt = CurrentTime,
+                TotalSeats = 50
+            };
+
+
+            //SPIDER-NOIR
+            var EventDto4 = new EventDto
+            {
+                Title = "SPIDER-NOIR",
+                Description = "2D",
+                StartAt = CurrentTime.AddHours(-2),
+                EndAt = CurrentTime,
+                TotalSeats = 50
+            };
+            var EventDto5 = new EventDto
+            {
+                Title = "SPIDER-NOIR",
+                Description = "3D",
+                StartAt = CurrentTime.AddHours(-2),
+                EndAt = CurrentTime,
+                TotalSeats = 50
+            };
+            var EventDto6 = new EventDto
+            {
+                Title = "SPIDER-NOIR",
+                Description = "3D IMAX",
+                StartAt = CurrentTime.AddHours(-2),
+                EndAt = CurrentTime,
+                TotalSeats = 50
+            };
+
+            var Event1 = Event.Create(EventDto1);
+            var Event2 = Event.Create(EventDto2);
+            var Event3 = Event.Create(EventDto3);
+            var Event4 = Event.Create(EventDto4);
+            var Event5 = Event.Create(EventDto5);
+            var Event6 = Event.Create(EventDto6);
+
+            await eventRepository.AddEventAsync(Event1, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event2, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event3, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event4, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event5, TestContext.Current.CancellationToken);
+            await eventRepository.AddEventAsync(Event6, TestContext.Current.CancellationToken);
+
+            await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //act and assert
+            var contextAct = CreateContext();
+            var eventRepositoryAct = new EventRepository(contextAct);
+            var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
+            Assert.NotEmpty(ListOfFilteredEvents);
+            Assert.Equal(3, ListOfFilteredEvents.Count);
+            Assert.All(ListOfFilteredEvents, (e) => Assert.Equal("SPIDER-NOIR", e.Title));
+        }
+
+
+
+
+
+
 
         //создаем объект спецификации EventSearchSpesicifation, в котором определим 
         //правила фильтрации.
