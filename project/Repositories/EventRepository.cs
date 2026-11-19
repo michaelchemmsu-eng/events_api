@@ -88,7 +88,18 @@ namespace project.Repositories
         }
 
 
-        
+        public async Task<bool> TryReserveSeatAsync(Guid eventId, CancellationToken ct = default) 
+        {
+           //Запрос к БД
+            var updatedRows = await _context.Events
+                .Where(e => e.Id == eventId && e.AvailableSeats > 0)
+                .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
+                                        , ct);
+            return updatedRows > 0;
+           
+        }
+
+
 
     }
 }

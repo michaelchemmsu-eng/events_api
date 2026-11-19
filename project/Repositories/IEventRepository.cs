@@ -78,6 +78,15 @@ namespace project.Repositories
         /// <returns></returns>
         Task SaveChangesAsync(CancellationToken ct);
 
+        /// <summary>
+        /// Резервирует одно место события с Id, переданным в метод в качестве аргумента.
+        /// Отпарвляем запрос в БД. Не взаимодействует с ChangeTracker
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        Task<bool> TryReserveSeatAsync(Guid id, CancellationToken token = default); 
+
 
     }
 }
