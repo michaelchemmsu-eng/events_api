@@ -25,6 +25,118 @@ namespace EventApi.IntegrationTests
 
 
 
+        [Fact]
+        //update an existing event obj in DB 
+        public async Task UpdateAnNonExistentEvent_ThrowsDbUpdatedException()
+        {
+            //arrange
+            DateTime CurrentTime = DateTime.UtcNow;
+
+            var EventDto1 = new EventDto
+            {
+                Title = "SHREK 1",
+                Description = "3D",
+                StartAt = CurrentTime.AddHours(1),
+                EndAt = CurrentTime.AddHours(3),
+                TotalSeats = 50
+            };
+            var event1 = Event.Create(EventDto1);
+
+            //act
+            using var contextAct = CreateContext();
+            var eventRepositoryAct = new EventRepository(contextAct);
+            eventRepositoryAct.UpdateEvent(event1);
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => eventRepositoryAct.SaveChangesAsync(TestContext.Current.CancellationToken));
+            
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        [Fact]
+        //update an existing event obj in DB 
+        public async Task UpdateAnExistingEvent_UpdatedEvent() 
+        {
+            //arrange
+            await ResetDatabaseAsync();
+            using var context = CreateContext();
+            var eventRepositoryArrange = new EventRepository(context);
+            DateTime CurrentTime = DateTime.UtcNow;
+
+
+            var EventDto1 = new EventDto
+            {
+                Title = "SHREK 1",
+                Description = "3D",
+                StartAt = CurrentTime.AddHours(1),
+                EndAt = CurrentTime.AddHours(3),
+                TotalSeats = 50
+            };
+            var event1 = Event.Create(EventDto1);
+
+            await eventRepositoryArrange.AddEventAsync(event1, TestContext.Current.CancellationToken);
+            await eventRepositoryArrange.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //act
+            using var contextAct = CreateContext();
+            var eventRepositoryAct = new EventRepository(contextAct);
+            var EventToUpdate = await eventRepositoryArrange.GetEventByIdAsync(event1.Id, TestContext.Current.CancellationToken);
+            if (EventToUpdate is not null)
+            {
+                EventToUpdate.Title = "SHREK 2";
+                eventRepositoryAct.UpdateEvent(EventToUpdate);
+                await eventRepositoryAct.SaveChangesAsync(TestContext.Current.CancellationToken);
+            }
+            else 
+            {
+                throw new NullReferenceException();
+            }
+            //assert
+            using var contextAssert = CreateContext();
+            var eventRepositoryAssert = new EventRepository(contextAssert);
+            var UpdatedEvent = await eventRepositoryAssert.GetEventByIdAsync(event1.Id, TestContext.Current.CancellationToken);
+            if (UpdatedEvent is not null)
+            {
+                Assert.Equal("SHREK 2", UpdatedEvent.Title);
+
+            }
+            else 
+            {
+                throw new NullReferenceException();
+            }
+
+
+        }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         [Fact]
@@ -33,7 +145,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -153,7 +265,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -238,7 +350,7 @@ namespace EventApi.IntegrationTests
             //act and assert
 
             //результат фильтрации: первые два -- шреки и последний -- паук-нуар
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -274,7 +386,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -356,7 +468,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -387,7 +499,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -467,7 +579,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -493,7 +605,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -573,7 +685,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -596,7 +708,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -676,7 +788,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -698,7 +810,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -777,7 +889,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -798,7 +910,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -877,7 +989,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByFromSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -898,7 +1010,7 @@ namespace EventApi.IntegrationTests
         {
             //Arrange
             await ResetDatabaseAsync();
-            var context = CreateContext();
+            using var context = CreateContext();
             var eventRepository = new EventRepository(context);
             string TitleForSpec = "SHREK 1";
             DateTime CurrentTime = DateTime.UtcNow;
@@ -976,7 +1088,7 @@ namespace EventApi.IntegrationTests
             await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
 
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByTitleSpec, TestContext.Current.CancellationToken);
             Assert.NotEmpty(ListOfFilteredEvents);
@@ -998,9 +1110,9 @@ namespace EventApi.IntegrationTests
             await ResetDatabaseAsync();
             string TitleForSpec = "SHREK 1";
             var FilterByTitleSpec = new EventSearchSpecification(TitleForSpec);
-            
+
             //act and assert
-            var contextAct = CreateContext();
+            using var contextAct = CreateContext();
             var eventRepositoryAct = new EventRepository(contextAct);
             var ListOfFilteredEvents = await eventRepositoryAct.ListEventsFilteredPagedAsync(FilterByTitleSpec, TestContext.Current.CancellationToken);
             Assert.Empty(ListOfFilteredEvents);
