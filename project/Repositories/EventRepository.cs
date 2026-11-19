@@ -65,7 +65,7 @@ namespace project.Repositories
         public async Task<int> CountAsync(Specification<Event> specification, CancellationToken ct = default) 
         {
             var query = _context.Events.AsQueryable();
-            query = SpecificationEvaluator.GetQuery(query, specification);
+            query = SpecificationEvaluator.GetQuery(query, specification,true);
             return await query.CountAsync(ct);
         }
 

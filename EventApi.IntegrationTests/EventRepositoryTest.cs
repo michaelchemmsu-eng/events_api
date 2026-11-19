@@ -26,7 +26,7 @@ namespace EventApi.IntegrationTests
 
 
         [Fact]
-        //update an existing event obj in DB 
+        //update an NonExistent event obj in DB 
         public async Task UpdateAnNonExistentEvent_ThrowsDbUpdatedException()
         {
             //arrange
