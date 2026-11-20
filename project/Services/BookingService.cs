@@ -43,7 +43,8 @@ namespace project.Services
             
                 var NewBookingObj = Booking.Create(new BookingRequest { EventId = eventId });
                 await _bookingRepository.AddBookingAsync(NewBookingObj, ct);
-                await _eventService.ReserveSeatsAsync(eventId, ct);//либо успешно резервирует с коммитом, либо бросает исключение
+                await _eventService.ReserveSeatsAsync(eventId, ct);//либо успешно резервирует, либо бросает исключение
+                await _bookingRepository.SaveChangesAsync();
                 return NewBookingObj.ToBookingResponse();
             }
             catch (KeyNotFoundException)

@@ -137,7 +137,9 @@ namespace BookingService.Test
             {
                 TaskList.Add(Task.Run(() =>
                 {
-                    //каждый Task создает свой экземпляр контекста, репозитория и сервиса, потому что сервис BookingService не потокобезопасный, так как использует EF Core DbContext, который не потокобезопасный
+                    //каждый Task создает свой экземпляр контекста, репозитория
+                    //и сервиса, потому что сервис BookingService не потокобезопасный,
+                    //так как использует EF Core DbContext, который не потокобезопасный
                     var context = CreateContext();
                     var eventRepository = new EventRepository(context);
                     var bookingRepository = new BookingRepository(context);
@@ -161,7 +163,8 @@ namespace BookingService.Test
             int succededTasksCount = TaskList.Count(t => t.IsCompletedSuccessfully);
             var contextAssert = CreateContext();
             var bookingRepositoryAssert = new BookingRepository(contextAssert);
-            var bookingIds = await bookingRepositoryAssert.GetPendingBookingIds(TestContext.Current.CancellationToken);
+            var bookingSavedBookings = await bookingRepositoryAssert.GetBookingsAsync(EventObject.Id, TestContext.Current.CancellationToken);
+            var bookingIds = bookingSavedBookings.Select(b => b.Id).ToList();
             Assert.Equal(succededTasksCount, bookingIds.Count);
             Assert.Equal(bookingIds.Count, bookingIds.Distinct().Count());//проверяем что все Id уникальны
 

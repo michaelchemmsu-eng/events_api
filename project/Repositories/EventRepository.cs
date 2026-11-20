@@ -55,6 +55,7 @@ namespace project.Repositories
                     var databaseValues = await entry.GetDatabaseValuesAsync(ct);
                     if (databaseValues is null)
                     {
+
                         throw new KeyNotFoundException($"Событие {entity.Id} было удалено другим пользователем.");
                     }
                     int currentDbAvailableSeats = (int)databaseValues[nameof(Event.AvailableSeats)]!;

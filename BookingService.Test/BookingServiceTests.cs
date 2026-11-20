@@ -341,17 +341,26 @@ namespace BookingService.Test
                );
 
             //eventRepository.GetEventByIdAsync
-            eventRepositoryMock.Setup(r => r.GetEventByIdAsync(eventCreated.Id, It.IsAny<CancellationToken>())).ReturnsAsync(eventCreated);
-
+            eventRepositoryMock.Setup(r => r.TryReserveSeatAsync(eventCreated.Id, It.IsAny<CancellationToken>())).Callback(()=>eventCreated.AvailableSeats--).ReturnsAsync(true);
+           
             //Act
+            /*
+             * BookingService.CreateBookingAsync -> 
+             *      Booking.Create
+             *      BookingRepository.AddBookingAsync
+             *      EventService.ReserveSeatsAsync ->
+             *          EventRepository.TryReserveSeatAsync:Tasnk<Bool>
+             *          EventRepository.IsExistInRepositoryAsync: bool
+             *      BookingRepository.SaveChangesAsync
+              */
             var bookingResponseObject = await bookingService.CreateBookingAsync(eventCreated.Id);
             //
   
             //Assert
             Assert.Equal(1, eventCreated.AvailableSeats);
-            eventRepositoryMock.Verify(r => r.UpdateEvent(eventCreated), Times.Once);
-            eventRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
-
+            eventRepositoryMock.Verify(r => r.TryReserveSeatAsync(eventCreated.Id, It.IsAny<CancellationToken>()), Times.Once);
+            bookingRepositoryMock.Verify(r => r.AddBookingAsync(It.IsAny<Booking>(), It.IsAny<CancellationToken>()), Times.Once);
+            bookingRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
 
         }
 

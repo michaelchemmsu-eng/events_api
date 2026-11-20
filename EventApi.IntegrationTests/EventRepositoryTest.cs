@@ -182,7 +182,7 @@ namespace EventApi.IntegrationTests
             var eventRepositoryAct = new EventRepository(contextAct);
             eventRepositoryAct.UpdateEvent(event1);
 
-            await Assert.ThrowsAsync<DbUpdateException>(() => eventRepositoryAct.SaveChangesAsync(TestContext.Current.CancellationToken));
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => eventRepositoryAct.SaveChangesAsync(TestContext.Current.CancellationToken));
             
 
 
