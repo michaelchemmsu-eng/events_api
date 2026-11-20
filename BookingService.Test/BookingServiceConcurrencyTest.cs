@@ -22,6 +22,8 @@ namespace BookingService.Test
         private Task ResetDatabaseAsync() => _postgresContainerFixture.ResetDatabaseAsync();
         private AppDbContext CreateContext() => _postgresContainerFixture.CreateContext();
 
+        
+
         public BookingServiceConcurrencyTest(PostgresContainerFixture containerFixture)
         {
             _postgresContainerFixture = containerFixture;
@@ -102,6 +104,67 @@ namespace BookingService.Test
             Assert.Equal(0, updatedEvent!.AvailableSeats);
 
         }
+
+
+        //Бронирование при отсутствии мест → NoAvailableSeatsException.
+        [Fact]
+        public async Task BookingEventWithNoAvailableSeats_ThrowNoAvailableSeatsException()
+        {
+            //Arrange
+            await ResetDatabaseAsync();
+            using var context = CreateContext();
+
+            var eventRepository = new EventRepository(context);
+           
+
+            var eventService = new EventService(eventRepository);
+           
+
+            int Nseats = 1;
+
+            var eventCreated = Event.Create
+              (
+                  new EventDto
+                  {
+                      Title = "Test Event 1",
+                      Description = "Test Description 1",
+                      StartAt = DateTime.UtcNow.AddDays(1),
+                      EndAt = DateTime.UtcNow.AddDays(3),
+                      TotalSeats = Nseats
+                  }
+              );
+            eventCreated.AvailableSeats = 0;
+            await eventRepository.AddEventAsync(eventCreated, TestContext.Current.CancellationToken);
+            await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //Act & Assert
+            /*
+            * BookingService.CreateBookingAsync -> 
+            *      Booking.Create
+            *      BookingRepository.AddBookingAsync
+            *      EventService.ReserveSeatsAsync ->
+            *          EventRepository.TryReserveSeatAsync:Tasnk<Bool>
+            *          EventRepository.IsExistInRepositoryAsync: bool
+            *      BookingRepository.SaveChangesAsync
+             */
+
+            //act and Assert
+            using var contextAct = CreateContext();
+            var bookingRepositoryAct = new BookingRepository(contextAct);
+            var eventRepositoryAct = new EventRepository(contextAct);
+            var eventServiceAct = new EventRepository(contextAct);
+            var bookingServiceAct = new project.Services.BookingService(
+               new Mock<ILogger<project.Services.BookingService>>().Object,
+               eventService,
+               bookingRepositoryAct);
+
+            NoAvailableSeatsException exception = await Assert.ThrowsAsync<NoAvailableSeatsException>(async () =>
+            {
+                await bookingServiceAct.CreateBookingAsync(eventCreated.Id, TestContext.Current.CancellationToken);
+            });
+
+        }
+
 
 
 

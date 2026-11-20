@@ -490,54 +490,7 @@ namespace BookingService.Test
 
        
 
-        //Бронирование при отсутствии мест → NoAvailableSeatsException.
-        [Fact]
-        public async Task BookingEventWithNoAvailableSeats_ThrowNoAvailableSeatsException() 
-        {
-            //Arrange
-            var eventRepositoryMock = new Mock<IEventRepository>();
-            var bookingRepositoryMock = new Mock<IBookingRepository>();
-
-            var eventService = new EventService(eventRepositoryMock.Object);
-            var bookingService = new project.Services.BookingService(
-                new Mock<ILogger<project.Services.BookingService>>().Object,
-                eventService,
-                bookingRepositoryMock.Object);
-
-            int Nseats = 1;
-
-            var eventResponse = Event.Create
-              (
-                  new EventDto
-                  {
-                      Title = "Test Event 1",
-                      Description = "Test Description 1",
-                      StartAt = DateTime.UtcNow.AddDays(1),
-                      EndAt = DateTime.UtcNow.AddDays(3),
-                      TotalSeats = Nseats
-                  }
-              );
-            eventResponse.AvailableSeats = 0;
-            var eventResponseId = eventResponse.Id;
-
-            //Act & Assert
-            /*
-            bookingService.CreateBookingAsync -> 
-               eventService.ReserveSeatsAsync ->
-                   eventRepository.GetEventByIdAsync
-                   eventRepository.UpdateEvent
-                   eventRepository.SaveChangesAsync
-            */
-            eventRepositoryMock.Setup(r => r.GetEventByIdAsync(eventResponseId, It.IsAny<CancellationToken>())).ReturnsAsync(eventResponse);
-            NoAvailableSeatsException exception = await Assert.ThrowsAsync<NoAvailableSeatsException>(async () =>
-            {
-                await bookingService.CreateBookingAsync(eventResponseId, TestContext.Current.CancellationToken);
-            });
-
-            eventRepositoryMock.Verify(r => r.UpdateEvent(eventResponse), Times.Never);
-            eventRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-
-        }
+        
 
 
        
