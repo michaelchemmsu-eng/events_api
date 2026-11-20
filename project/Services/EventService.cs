@@ -1,13 +1,13 @@
 ﻿
+using Docker.DotNet.Models;
+using Microsoft.EntityFrameworkCore;
 using project.CustomExceptions;
 using project.DataAccess;
-
 using project.Models;
+using project.Repositories;
+using project.Services.Specifications;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.EntityFrameworkCore;
-using project.Services.Specifications;
-using project.Repositories;
 using System.Runtime.InteropServices;
 
 namespace project.Services
@@ -46,84 +46,24 @@ namespace project.Services
         public async Task ReserveSeatsAsync(Guid eventId,CancellationToken ct=default) 
         {
 
-           
-            await _eventRepository.TryReserveSeatAsync(eventId, ct);
             //OperationCancelledException, KeyNotFoundException, NoAvailableSeatsException
-            
+            bool res = await _eventRepository.TryReserveSeatAsync(eventId, ct);
+            if (res)
+                return;
 
-            //var eventItem = await _eventRepository.GetEventByIdAsync(eventId, ct);
+            //выяснсяем по какой причине updatedRows =0
+            //до следующей строки другой поток может добавить событие, но маловероятно, что оно при добавлении будет c Id=eventId
+            var eventExists = await _eventRepository.IsExistInRepositoryAsync(eventId, ct);
+            if (!eventExists)
+            {
+                throw new KeyNotFoundException($"Событие {eventId} не найдено.");
+            }
+            else
+            {
+                throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
+            }
 
-            //if (eventItem is null)
-            //{
-            //    throw new KeyNotFoundException($"Событие {eventId} не найдено.");
-
-            //}
-            //eventItem.ReserveSeat();//throws NoAvailableSeatsException if AvailableSeats <=0
-            //int retryCount = 0;// счетчик попыток обновления объекта в БД при возникновении конфликта конкурентного доступа
-            //bool isSaved = false;
-            
-            //while (!isSaved && retryCount < 5) 
-            //{
-            //    try
-            //    {
-            //        _eventRepository.UpdateEvent(eventItem);
-
-            //        //update "Events" set "AvailableSeats" = x where "Id" = '...';
-            //        //если другой поток удалит событие, то при попытке обновить psql выдаст 0, а EF Core -- DbUpdateConcurrencyException
-            //        //но в контексте в памяти есть еще созданный объект booking, то есть 
-            //        //отпарвляется так же команда insert into "Bookings". Эта команда может выбросить ошибку 
-            //        //DbUpdateException при вызове команды DbContext.SaveChangesAsync();
-            //        await _eventRepository.SaveChangesAsync(ct);
-            //        isSaved = true;
-            //    }
-            //    catch (DbUpdateConcurrencyException ex) 
-            //    {
-            //        retryCount++;
-            //        /*
-            //        нужно дойти до свойства AvailableSeats сущности, которая вызвала конфликт
-            //        посмотреть на текущее значение этого свойства в БД
-            //        если оно 0, то бросить исключение
-            //        если оно >0, то обновить Original Value в соответсвии с DataBase value
-            //        AvailbaleSeats обновить в соответсвии с DataBase value
-            //        повторить попытку обновления на Current Value.
-            //            */
-            //        //получаем объект entityentry , который вызвал конфликт
-            //        var entry = ex.Entries[0]; //Gets the entries that were involved in the error. Typically this is a single entry, but in some cases it may be zero or multiple entries.
-            //        //достаем из БД данные. получаем PropertyValues
-            //        var databaseValues = await entry.GetDatabaseValuesAsync(ct); //Queries the database for copies of the values of the tracked entity as they currently exist in the database
-
-            //        if (databaseValues is null)
-            //        {
-            //            throw new KeyNotFoundException($"Событие {eventId} было удалено другим пользователем.");
-            //        }
-
-            //        //поулчаем значение конкретного проперти AvailableSeats, которое сейчас в БД
-            //        int currentDbSeats = (int)databaseValues[nameof(Event.AvailableSeats)]!;
-
-            //        if (currentDbSeats <= 0)
-            //        {
-            //            throw new NoAvailableSeatsException($"Нет доступных мест для события {eventId}");
-            //        }
-
-            //        eventItem.AvailableSeats = currentDbSeats - 1;
-            //        entry.OriginalValues.SetValues(databaseValues);//Original values are the values that were originally
-            //    }
-            //    catch (DbUpdateException)
-            //    {
-            //        // Если во время сохранения брони событие было удалено другим потоком 
-            //        throw new KeyNotFoundException($"Событие {eventId} было удалено другим пользователем.");
-            //    }
-            //}
-            //if (!isSaved)
-            //{
-            //    throw new Exception("Не удалось забронировать место из-за высокой нагрузки.");
-            //}
-
-            
-
-
-
-           
+          
 
         }
 
@@ -186,25 +126,6 @@ namespace project.Services
         }
 
 
-        /// <summary>
-        /// Асинхронный метод.
-        /// Возвращает сущность Event, если в хранилище есть объект Event с переданным Id
-        /// Выбрасывает исключение KeyNotFoundException в случае отстутвия объекта Event с Id в хранилище
-        /// </summary>
-        /// <param name="id">идентификатор сущности</param>
-        /// <param name="ct">токен отмены</param>
-        /// <returns>Event or throws KeyNotFoundException</returns>
-        /// <exception cref="KeyNotFoundException"></exception>
-        // метод для бизнес-логики в других сервисах -- возвращает Event
-        //public async Task <Event> GetEventByIdAsync(Guid id, CancellationToken ct = default)
-        //{
-        //    var EventObj = await _context.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
-        //    if (EventObj is null)
-        //    {
-        //        throw new KeyNotFoundException($"Событие с идентификатором '{id}' не найдено.");
-        //    }
-        //    return EventObj;
-        //}
 
 
         /// <summary>
@@ -229,18 +150,23 @@ namespace project.Services
         /// <param name="eventDto">EventDto</param>
         /// <param name="ct">токен отмены</param>
         /// <exception cref="KeyNotFoundException"></exception>
-        public async Task UpdateEventAsync(Guid id, EventDto eventDto, CancellationToken ct = default) 
+        public async Task UpdateEventAsync(Guid id, EventDto eventDto, CancellationToken ct = default)
         {
 
-            var IsExists = await _eventRepository.IsExistInRepositoryAsync(id, ct);
-            if (!IsExists) 
-            {
+            var eventFromDB = await _eventRepository.GetEventByIdAsync(id, ct);
+            if (eventFromDB is null)
                 throw new KeyNotFoundException($"Event with the key {id} is not found");
-            }
-            var UpdatedEvent = Event.Create(eventDto);//бросает исключение, если данные не валидные
-            UpdatedEvent.Id = id;
-            _eventRepository.UpdateEvent(UpdatedEvent);
+            int TakenSeatsCount = eventFromDB.TotalSeats - eventFromDB.AvailableSeats;
+            if (TakenSeatsCount > eventDto.TotalSeats)
+                throw new NoAvailableSeatsException("Total seats cannot be less than the number of seats already taken");
+
+            eventFromDB.UpdateFromDto(eventDto);
+            eventFromDB.AvailableSeats -= TakenSeatsCount;
+
+
+            _eventRepository.UpdateEvent(eventFromDB);
             await _eventRepository.SaveChangesAsync(ct);
+
 
         }
 

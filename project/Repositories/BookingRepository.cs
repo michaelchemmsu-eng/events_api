@@ -1,15 +1,34 @@
-﻿using project.Models;
-using project.DataAccess;
+﻿using Castle.Core.Logging;
 using Microsoft.EntityFrameworkCore;
+using project.DataAccess;
+using project.Models;
+using project.Services;
 using project.Services.EventSpecificator;
 namespace project.Repositories
 {
     public class BookingRepository: IBookingRepository
     {
         private readonly AppDbContext _context;
+     
+        public async Task RollBackBookingAsync(Guid bookingId, Guid eventId, CancellationToken ct = default) 
+        {
+           
+                using var transaction = await _context.Database.BeginTransactionAsync(ct);
+                
+                await _context.Bookings
+                    .Where(b => b.Id == bookingId)
+                    .ExecuteUpdateAsync(setter => setter.SetProperty(b => b.Status, BookingStatus.Rejected), ct);
+                await _context.Events.Where(e => e.Id == eventId)
+                    .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats + 1), ct);
+                await transaction.CommitAsync(ct);
+          
+
+        }
+
         public BookingRepository(AppDbContext context)
         {
             _context = context;
+ 
         }
         public async Task<Booking?> GetBookingByIdAsync(Guid id, CancellationToken ct = default)
         {

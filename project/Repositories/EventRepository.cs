@@ -18,8 +18,69 @@ namespace project.Repositories
 
 
         public async Task SaveChangesAsync(CancellationToken ct)
+
         {
-            await _context.SaveChangesAsync(ct);
+            bool isSaved = false;
+            int retryCount = 0;
+
+            while (!isSaved && retryCount < 5)
+            {
+                try
+                {
+                    await _context.SaveChangesAsync(ct);
+                    isSaved = true;
+
+                }
+                catch (DbUpdateConcurrencyException ex) 
+                {
+                    //получить объект entry из-за которого исклбчение 
+                    //если это не команда модификации, то пробросить искл
+                    //если команда модификации, то проверить AvailableSeats - оно Concurrency Token
+                    //получить значение свойства из БД
+                    //проверить, сколько мест занято в БД
+                    //проверить хватит ли число мест , которое идет на модификацию.
+                    retryCount++;
+                    var entry = ex.Entries.FirstOrDefault(e => e.Entity is Event);
+                    
+                    if (entry is null || entry.State != EntityState.Modified)
+                        throw;
+                    var entity = (Event)entry.Entity;
+
+
+
+
+
+
+                    //актуальные значения из БД
+                    var databaseValues = await entry.GetDatabaseValuesAsync(ct);
+                    if (databaseValues is null)
+                    {
+                        throw new KeyNotFoundException($"Событие {entity.Id} было удалено другим пользователем.");
+                    }
+                    int currentDbAvailableSeats = (int)databaseValues[nameof(Event.AvailableSeats)]!;
+                    int currentDbTotalSeats = (int)databaseValues[nameof(Event.TotalSeats)]!;
+
+
+
+
+
+
+
+                    int takenSeatsCount = currentDbTotalSeats - currentDbAvailableSeats;
+                    if (takenSeatsCount > entity.TotalSeats)
+                    {
+                        throw new NoAvailableSeatsException($"Нет доступных мест для события {entity.Id}");
+                    }
+                    entity.AvailableSeats = entity.TotalSeats - takenSeatsCount;
+                    entry.OriginalValues.SetValues(databaseValues);
+
+
+                }
+            }
+            if (!isSaved)
+            {
+                throw new Exception("Не удалось сохранить изменения из-за высокой нагрузки.");
+            }
         }
 
 
@@ -93,8 +154,7 @@ namespace project.Repositories
            //Запрос к БД
             var updatedRows = await _context.Events
                 .Where(e => e.Id == eventId && e.AvailableSeats > 0)
-                .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1)
-                                        , ct);
+                .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats - 1), ct);
             return updatedRows > 0;
            
         }

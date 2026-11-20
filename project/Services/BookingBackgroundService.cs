@@ -154,16 +154,10 @@ namespace project.Services
             using (var scope = _scopeFactory.CreateScope())
             {
 
-                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                using var transaction = await context.Database.BeginTransactionAsync(ct);
                 try
                 {
-                    await context.Bookings
-                        .Where(b => b.Id == bookingId)
-                        .ExecuteUpdateAsync(setter => setter.SetProperty(b => b.Status, BookingStatus.Rejected), ct);
-                    await context.Events.Where(e => e.Id == eventId)
-                        .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.AvailableSeats, e => e.AvailableSeats + 1), ct);
-                    await transaction.CommitAsync(ct);
+                    var bookingRepository = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
+                    await bookingRepository.RollBackBookingAsync(bookingId, eventId, ct);
                 }
                 catch (OperationCanceledException)
                 {

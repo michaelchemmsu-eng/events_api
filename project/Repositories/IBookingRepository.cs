@@ -13,5 +13,6 @@ namespace project.Repositories
         Task<List<Guid>> GetPendingBookingIds(CancellationToken ct = default);
         Task SaveChangesAsync(CancellationToken ct = default);
         Task<List<Booking>> GetAllBookingsFilteredAsync(Specification<Booking> specification, CancellationToken ct = default);
+        Task RollBackBookingAsync(Guid bookingId, Guid eventId, CancellationToken ct = default);
     }
 }
