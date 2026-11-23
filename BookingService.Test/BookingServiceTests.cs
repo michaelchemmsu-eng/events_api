@@ -420,22 +420,31 @@ namespace BookingService.Test
                       TotalSeats = 1
                   }
               );
+           eventResponse.AvailableSeats = 0;
            var eventResponseId = eventResponse.Id;
             //Act
-            //bookingService.CreateBookingAsync -> eventService.ReserveSeatsAsync->eventRepository.GetEventByIdAsync
-            //eventRepository.UpdateEvent
-            //eventRepository.SaveChangesAsync
-            eventRepositoryMock.Setup(r => r.GetEventByIdAsync(eventResponseId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(eventResponse);
-            var bookingResponseObject = await bookingService.CreateBookingAsync(eventResponseId);
+            //настройка
+            /*
+                 * BookingService.CreateBookingAsync -> 
+                 *      Booking.Create
+                 *      BookingRepository.AddBookingAsync
+                 *      EventService.ReserveSeatsAsync ->
+                 *          EventRepository.TryReserveSeatAsync:Tasnk<Bool>
+                 *          EventRepository.IsExistInRepositoryAsync: bool
+                 *      BookingRepository.SaveChangesAsync
+                  */
+            eventRepositoryMock.Setup(r => r.TryReserveSeatAsync(eventResponseId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            eventRepositoryMock.Setup(r => r.IsExistInRepositoryAsync(eventResponseId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
            //Act & Assert
            NoAvailableSeatsException exception = await Assert.ThrowsAsync<NoAvailableSeatsException>(async () =>
            {
                await bookingService.CreateBookingAsync(eventResponseId);
            });
-
-            eventRepositoryMock.Verify(r => r.UpdateEvent(eventResponse), Times.Once);
-            eventRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+            bookingRepositoryMock.Verify(b => b.AddBookingAsync(It.IsAny<Booking>()));
+            eventRepositoryMock.Verify(r => r.TryReserveSeatAsync(eventResponseId), Times.Once);
+            eventRepositoryMock.Verify(r => r.IsExistInRepositoryAsync(eventResponseId), Times.Once);
 
 
         }
@@ -481,14 +490,17 @@ namespace BookingService.Test
             var tasks = new List<Task<BookingResponse>>();
 
             //Act
+            //настройка
             /*
-             bookingService.CreateBookingAsync -> 
-                eventService.ReserveSeatsAsync ->
-                    eventRepository.GetEventByIdAsync
-                    eventRepository.UpdateEvent
-                    eventRepository.SaveChangesAsync
-             */
-            eventRepositoryMock.Setup(r => r.GetEventByIdAsync(eventResponseId, It.IsAny<CancellationToken>())).ReturnsAsync(eventResponse);
+                 * BookingService.CreateBookingAsync -> 
+                 *      Booking.Create
+                 *      BookingRepository.AddBookingAsync
+                 *      EventService.ReserveSeatsAsync ->
+                 *          EventRepository.TryReserveSeatAsync:Tasnk<Bool>
+                 *          EventRepository.IsExistInRepositoryAsync: bool
+                 *      BookingRepository.SaveChangesAsync
+                  */
+            eventRepositoryMock.Setup(r => r.TryReserveSeatAsync(eventResponseId, It.IsAny<CancellationToken>())).ReturnsAsync(true);
             for (int i = 0; i < Nseats; i++) 
             {
                 var task = bookingService.CreateBookingAsync(eventResponse.Id);
@@ -503,8 +515,8 @@ namespace BookingService.Test
             var uniqueIdsCount = bookingResponses.Select(b => b.BookingId).Distinct().Count();
             Assert.Equal(Nseats, uniqueIdsCount);
 
-            eventRepositoryMock.Verify(r => r.UpdateEvent(eventResponse), Times.Exactly(Nseats));
-            eventRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(Nseats));
+            bookingRepositoryMock.Verify(r => r.AddBookingAsync(It.IsAny<Booking>()), Times.Exactly(Nseats));
+            bookingRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Exactly(Nseats));
 
         }
 
@@ -711,96 +723,6 @@ namespace BookingService.Test
 
 
 
-        /*
-
-
-
-
-//Тест на уникальность Id при конкурентных запросах
-[Theory]
-[InlineData(1)]   // Тест запустится для 1 места
-[InlineData(5)]   // Тест запустится для 5 мест
-[InlineData(50)]  // Тест запустится для 50 мест
-public async Task ConcurrentQueries_BookingsWithUniqueIds(int totalSeats) 
-{
- //Arrange
- int ExtraQueries = 10;
- int NQueries = totalSeats + ExtraQueries;
- var eventResponse = _eventService.CreateEvent
-  (
-      new EventDto
-      {
-          Title = "Test Event",
-          Description = "Test Description",
-          StartAt = DateTime.UtcNow.AddDays(1),
-          EndAt = DateTime.UtcNow.AddDays(3),
-          TotalSeats = totalSeats
-      }
-  );
- var TaskList = new List<Task>();
- for (int i = 0; i < NQueries; i++)
- {
-
-     TaskList.Add(_bookingService.CreateBookingAsync(eventResponse.Id));
-
- }
- //Дано: событие на totalSeats мест, NQueries конкурентных запросов.
- //Ожидается: ровно totalSeats успешных броней, X — NoAvailableSeatsException, AvailableSeats = Y.
- // Act
- try
- {
-
-     await Task.WhenAll(TaskList);
- }
- catch
- {
- }
- // Assert
- //проверяем, что все booking с уникальными Id
- //получить все booking
- //получить id всех booking
- //проверить на единственность 
- var BookingIds = _bookingRepository.GetAllBookings().Select(b => b.BookingId);
- foreach (var id in BookingIds) 
- {
-     Assert.Single(BookingIds, id);
- }         
-
-}
-
-
-
-
-
-
-
-
-
-[Fact]
-public void CreateEvent_WhenTotalSeatsIsZeroOrNegative_ThrowsValidationException()
-{
- // Arrange
- var dtoWithZeroSeats = new EventDto
- {
-     Title = "Title",
-     StartAt = DateTime.UtcNow.AddDays(1),
-     EndAt = DateTime.UtcNow.AddDays(2),
-     TotalSeats = 0 
- };
- var dtoWithNegativeValueSeats = new EventDto
- {
-     Title = "Title",
-     StartAt = DateTime.UtcNow.AddDays(1),
-     EndAt = DateTime.UtcNow.AddDays(2),
-     TotalSeats = -1
- };
-
- // Act and Assert: проверяем, что выбрасывается ValidationException 
- Assert.Throws<ValidationException>(() =>_eventService.CreateEvent(dtoWithZeroSeats));
- Assert.Throws<ValidationException>(() => _eventService.CreateEvent(dtoWithNegativeValueSeats));
-
-}
-*/
 
     }
 
