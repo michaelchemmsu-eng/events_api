@@ -104,7 +104,7 @@ namespace project.Services
         }
 
 
-        public async Task<List<Booking>> GetAllBookingsAsync(
+        public async Task<List<BookingResponse>> GetAllBookingsAsync(
            string? title,
            DateTime? from,
            DateTime? to,

@@ -63,11 +63,11 @@ namespace project.Repositories
 
 
 
-        public async Task<List<Booking>> GetAllBookingsFilteredAsync(Specification<Booking> specification, CancellationToken ct = default)
+        public async Task<List<BookingResponse>> GetAllBookingsFilteredAsync(Specification<Booking> specification, CancellationToken ct = default)
         {
             var query = _context.Bookings.AsQueryable();
             query = SpecificationEvaluator.GetQuery(query, specification);
-            return await query.ToListAsync(ct);
+            return await query.Select(b=>b.ToBookingResponse()).ToListAsync(ct);
         }
 
 

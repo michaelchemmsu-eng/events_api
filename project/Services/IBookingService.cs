@@ -37,7 +37,7 @@ namespace project.Services
         /// <param name="pageSize"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        Task<List<Booking>> GetAllBookingsAsync(
+        Task<List<BookingResponse>> GetAllBookingsAsync(
            string? title,
            DateTime? from,
            DateTime? to,
