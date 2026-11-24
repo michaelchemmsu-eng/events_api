@@ -3,7 +3,7 @@ using Npgsql;
 using project.DataAccess;
 using project.Models;
 using project.Repositories;
-
+using project.Services.Specifications;
 using Testcontainers.PostgreSql;
 
 namespace EventApi.IntegrationTests
@@ -18,10 +18,208 @@ namespace EventApi.IntegrationTests
         private Task ResetDatabaseAsync() => _postgresContainerFixture.ResetDatabaseAsync();
         private AppDbContext CreateContext() => _postgresContainerFixture.CreateContext();
 
+      
+
         public BookingRepositoryTest(PostgresContainerFixture containerFixture)
         {
             _postgresContainerFixture = containerFixture;
         }
+
+
+
+
+
+        
+        [Theory]
+
+        [InlineData(null, null, null, null, null)]
+        [InlineData("SPIDER NIOR", null, null, null, null)]
+        [InlineData("SPIDER NIOR", -4.0, null, null, null)]
+        [InlineData("SPIDER NIOR", null, -2.0, null, null)]
+        [InlineData("SPIDER NIOR", -2.0, -2.0, null, null)]
+        [InlineData(null, null, null, 2, 2)]
+        [InlineData(null, null, null, 2, 100)]
+        public async Task GetAllBookingsFilteredAsync_FilteredResults(
+            string? title,
+            double? fromOffsetHours,
+            double? toOffsetHours,
+            int? page,
+            int? pageSize)
+        {
+            //arrange
+            await ResetDatabaseAsync();
+            using var contextArrange = CreateContext();
+            var bookingRepository = new BookingRepository(contextArrange);
+            var eventRepository = new EventRepository(contextArrange);
+
+            //создать ивенты
+            /*
+             создать букинги для этих ивентов
+            сохранить их все в памяти
+            сохрнаить их все в БД
+            в памяти сымитировать работу фильтра и получить результаты
+            применить фильтр в  GetAllBookingsFilteredAsync и получить результаты
+            сравнить резултаты
+             */
+            var referenceDate = DateTime.UtcNow;
+            var eventDto1 = new EventDto
+            {
+                Title = "SPIDER NIOR",
+                Description = "2D",
+                StartAt = referenceDate.AddHours(-5),
+                EndAt = referenceDate.AddHours(-3),
+                TotalSeats = 80
+            };
+            var eventDto2 = new EventDto
+            {
+                Title = "SPIDER NIOR",
+                Description = "3D",
+                StartAt = referenceDate.AddHours(-4),
+                EndAt = referenceDate.AddHours(-2),
+                TotalSeats = 80
+            };
+            var eventDto3 = new EventDto
+            {
+                Title = "SPIDER NIOR",
+                Description = "3D IMAX",
+                StartAt = referenceDate.AddHours(-3),
+                EndAt = referenceDate.AddHours(-1),
+                TotalSeats = 80
+            };
+            var event1 = Event.Create(eventDto1);
+            var event2 = Event.Create(eventDto2);
+            var event3 = Event.Create(eventDto3);
+
+
+            var eventDto4 = new EventDto
+            {
+                Title = "SHREK 1",
+                Description = "2D",
+                StartAt = referenceDate.AddHours(-5),
+                EndAt = referenceDate.AddHours(-3),
+                TotalSeats = 80
+            };
+            var eventDto5 = new EventDto
+            {
+                Title = "SHREK 1",
+                Description = "3D",
+                StartAt = referenceDate.AddHours(-4),
+                EndAt = referenceDate.AddHours(-2),
+                TotalSeats = 80
+            };
+            var eventDto6 = new EventDto
+            {
+                Title = "SHREK 1",
+                Description = "3D IMAX",
+                StartAt = referenceDate.AddHours(-3),
+                EndAt = referenceDate.AddHours(-1),
+                TotalSeats = 80
+            };
+            var event4 = Event.Create(eventDto4);
+            var event5 = Event.Create(eventDto5);
+            var event6 = Event.Create(eventDto6);
+
+            await eventRepository.AddEventAsync(event1);
+            await eventRepository.AddEventAsync(event2);
+            await eventRepository.AddEventAsync(event3);
+            await eventRepository.AddEventAsync(event4);
+            await eventRepository.AddEventAsync(event5);
+            await eventRepository.AddEventAsync(event6);
+
+            await eventRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            var ListOFEvents = new List<Event> { event1, event2, event3, event4, event5, event6};
+
+
+
+            var booking1 = Booking.Create(new BookingRequest { EventId = event1.Id });
+            var booking2 = Booking.Create(new BookingRequest { EventId = event1.Id });
+            var booking3 = Booking.Create(new BookingRequest { EventId = event1.Id });
+            var booking4 = Booking.Create(new BookingRequest { EventId = event2.Id });
+            var booking5 = Booking.Create(new BookingRequest { EventId = event2.Id });
+            var booking6 = Booking.Create(new BookingRequest { EventId = event2.Id });
+            var booking7 = Booking.Create(new BookingRequest { EventId = event3.Id });
+            var booking8 = Booking.Create(new BookingRequest { EventId = event3.Id });
+            var booking9 = Booking.Create(new BookingRequest { EventId = event3.Id });
+            var booking10 = Booking.Create(new BookingRequest { EventId = event4.Id });
+            var booking11 = Booking.Create(new BookingRequest { EventId = event4.Id });
+            var booking12 = Booking.Create(new BookingRequest { EventId = event4.Id });
+            var booking13 = Booking.Create(new BookingRequest { EventId = event5.Id });
+            var booking14 = Booking.Create(new BookingRequest { EventId = event5.Id });
+            var booking15 = Booking.Create(new BookingRequest { EventId = event5.Id });
+            var booking16 = Booking.Create(new BookingRequest { EventId = event6.Id });
+            var booking17 = Booking.Create(new BookingRequest { EventId = event6.Id });
+            var booking18 = Booking.Create(new BookingRequest { EventId = event6.Id });
+
+            var ListOfBookings = new List<Booking> {
+                booking1, booking2,booking3,
+                booking4, booking5,booking6,
+                booking7, booking8,booking9,
+                booking10, booking11,booking12,
+                booking13, booking14,booking15,
+                booking16, booking17,booking18
+            };
+
+            var ListOfBookingAddingTasks = new List<Task>();
+
+            foreach (Booking b in ListOfBookings) 
+            {
+                ListOfBookingAddingTasks.Add(bookingRepository.AddBookingAsync(b));
+            }
+            await Task.WhenAll(ListOfBookingAddingTasks);
+            await bookingRepository.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            //Act
+            /*
+              string? title,
+            int? fromOffsetHours,
+            int? toOffsetHours,
+            int? page,
+            int? pageSize
+             */
+
+
+
+            var InMemoryFilteringQuery = ListOfBookings.AsQueryable();
+            if (title is not null)
+                InMemoryFilteringQuery = InMemoryFilteringQuery.Where(b => b.Event.Title == title);
+            if (fromOffsetHours is not null)
+                InMemoryFilteringQuery = InMemoryFilteringQuery.Where(b => b.Event.StartAt >= referenceDate.AddHours(fromOffsetHours.Value));
+            if (toOffsetHours is not null)
+                InMemoryFilteringQuery = InMemoryFilteringQuery.Where(b => b.Event.EndAt <= referenceDate.AddHours(toOffsetHours.Value));
+            InMemoryFilteringQuery = InMemoryFilteringQuery.OrderBy(b => b.Event.StartAt).ThenBy(b => b.Id);
+            if (page is not null && pageSize is not null) 
+            {
+                InMemoryFilteringQuery = InMemoryFilteringQuery.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
+            }
+            var expectedResult = InMemoryFilteringQuery.ToList();
+
+
+
+
+
+            using var contexAct = CreateContext();
+            var bookingRepositoryAct = new BookingRepository(contexAct);
+            DateTime? fromFilter = fromOffsetHours.HasValue ? referenceDate.AddHours(fromOffsetHours.Value) : null;
+            DateTime? toFilter = toOffsetHours.HasValue ? referenceDate.AddHours(toOffsetHours.Value) : null;
+            var spec = new BookingSearchSpecification(title, fromFilter, toFilter, page, pageSize);
+            var actualResult = await bookingRepositoryAct.GetAllBookingsFilteredAsync(spec, TestContext.Current.CancellationToken);
+
+
+            //assert
+            Assert.Equal(expectedResult.OrderBy(b=>b.Id).Select(b => b.Id), actualResult.OrderBy(b => b.Id).Select(b => b.Id));
+            
+
+
+        }
+
+
+
+
+
+
+
+
 
 
 

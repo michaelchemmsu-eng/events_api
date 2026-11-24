@@ -36,8 +36,9 @@ namespace project.Services.Specifications
                 (!to.HasValue || 
                 b.Event.EndAt <= to.Value);
             OrderBy = b => b.Event.StartAt;
-            ThenBy = b => b.Event.Id; // это нужно, чтобы при одинаковых StartAt события сортировались по Id, иначе будет ошибка при пагинации
-            ApplyPaging(checked((page!.Value - 1) * pageSize!.Value), pageSize!.Value);
+            ThenBy = b => b.Id; // это нужно, чтобы при одинаковых StartAt события сортировались по Id, иначе будет ошибка при пагинации
+            if (page.HasValue && pageSize.HasValue)
+                ApplyPaging(checked((page!.Value - 1) * pageSize!.Value), pageSize!.Value);
 
         }
     }
