@@ -192,7 +192,7 @@ namespace EventApi.IntegrationTests
             {
                 InMemoryFilteringQuery = InMemoryFilteringQuery.Skip((page.Value - 1) * pageSize.Value).Take(pageSize.Value);
             }
-            var expectedResult = InMemoryFilteringQuery.ToList();
+            var expectedResult = InMemoryFilteringQuery.Select(b=>b.ToBookingResponse()).ToList();
 
 
 
@@ -207,7 +207,7 @@ namespace EventApi.IntegrationTests
 
 
             //assert
-            Assert.Equal(expectedResult.OrderBy(b=>b.Id).Select(b => b.Id), actualResult.OrderBy(b => b.Id).Select(b => b.Id));
+            Assert.Equal(expectedResult.OrderBy(b=>b.BookingId).Select(b => b.BookingId), actualResult.OrderBy(b => b.BookingId).Select(b => b.BookingId));
             
 
 

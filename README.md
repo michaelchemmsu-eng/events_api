@@ -96,25 +96,17 @@ dotnet run --project project
 - POST /events/3fa85f64-5717-4562-b3fc-2c963f66afa6/book
 - BookingService.CreateBookingAsync() ->
      Booking.Create()
-     BookingRepository.AddBookingAsync() ->
-        DbContext.Bookings.AddAsync()
-     EventService.ReserveSeatsAsync() ->
-        EventRepository.GetEventByIdAsync()
-        Event.ReserveSeat()
-        EventRepository.UpdateEvent()
-        EventRepository.SaveChangesAsync()
-    метод ReserveSeatsAsync (Guid) проверяет на наличие события по айди в БД -- бросает KeyNotFoundException, если не найдено, и
-    возвращает объект Event, если найдено. Уменьшает счетчик AvailableSeats объекта ивент в памяти на единицу.
-    в цикле пробует обновить объект Event в БД и бросает исключение NoAvailableSeatsException, если значение <=0. Пробует сохранить изменения объектов в памяти в БД (объекты букинг и ивент).
-    Таким образом, в БД отправляются две команды
-    update "Events" set
-    и
-    insert into "Bookings"
-    Event.AvailableSeats настроен, как IsConcurrencyToken(). Таким образом, если при попытке сохранения или обновления объекта Event другой поток уже изменил состояние
-    этого объекта в БД, то выбрасывается исключение DbUpdateConcurrencyException. Но свободных мест все еще может быть достаточно для резервирования. Поэтому цикл
-    обновления и сохранения повторяется. Перед следующей попыткой нужно актуализировать значение AvailableSeats в кеше контекста значением из БД. Для этого 
-    из БД достаем акутальное значение, меняем у объекта в кеше контеста значние AvailableSeats значением из БД с учетом одного зарезрвированного места, меняем 
-    оргинальное значение в EntityEntry для следующей итерации. 
+     EventRepository.AddEventAsync()
+     EventRepository.SaveChangesAsync()
+     Про метод EventRepository.SaveChangesAsync(). Свойство Event.AvailableSeats в EventConfigurations объявлено , как IsConcurrencyToken. метод EventRepository.SaveChangesAsync() 
+     вызывает метод DbContext.SaveChangesAsync() и может завершиться с исключением DbUpdateConcurrencyException, если свойство AvailableSeats в БД было изменено в момент сохранения
+     . EventRepository.SaveChangesAsync() перехватывает это исключение, получает entity, из-за которого метод SaveChangesAsync() завершился с исключением, получает текущие значения
+     свойств этого entity из БД, и , если при этом вернулось значение null, значит, объекта события нет в БД, запись о нет была удалилена другим пользователем - в таком случае метод 
+     EventRepository.SaveChangesAsync() завершается с исключением KeyNotFoundException. Если же получили из БД значения свойств, то в таком случае нас интересует число уже купленных
+     билетов на это событие. При обновлении нужно учитывать это число, чтобы при сохранении не потерять уже купленные билеты. Если новое значение TotalSeats меньше числа купленных билетов
+     , то в таком случае EventRepository.SaveChangesAsync() завершается с исключением NoAvailableSeatsException, иначе корректируем AvailableSeats и OriginalValues объекта EntityEntry.
+
+    
 
 - формат ответа при ошибке "событие не найдено" (KeyNotFoundException):
     ``` JSON
@@ -141,6 +133,7 @@ dotnet run --project project
   "status": "Pending"
 }
  ```
+ 
 
 
 
@@ -348,6 +341,18 @@ dotnet run --project project
   "instance": "/events/d32ae92d-501f-4bd6-8056-a3bb1f36fd0f"
 }
 ```
+* **ответ в случае ошибки - новое значение TotalSeats невалидно:** `409`
+* **Тело ответа:**
+```json
+{
+  "title": "Incorrect request incoming parameter value",
+  "status": 409,
+  "detail": "Total seats cannot be less than the number of seats already taken",
+  "instance": "/events/63ddd565-e8eb-477c-9518-7877130190b6"
+}
+```
+
+
 - ошибки валидации в привязке такие же, как в методе POST /events
 - ошибки валидации при создании Event из EventDto такие же, как в методе POST /events
 
@@ -595,6 +600,8 @@ dotnet run --project project
 - public async Task<List<Booking>> GetAllBookingsFilteredAsync(Specification<Booking> specification, CancellationToken ct = default)
 - public async Task<List<Guid>> GetPendingBookingIds(CancellationToken ct = default)
 - public async Task SaveChangesAsync(CancellationToken ct=default)
+- public async Task RollBackBookingAsync(Guid bookingId, Guid eventId, CancellationToken ct = default)
+- 
 
 ## Репозиторий EventRepository
 - private readonly AppDbContext _context;
@@ -608,6 +615,7 @@ dotnet run --project project
 - public void DeleteEvent(Event Event)
 - public async Task<int> CountAsync(Specification<Event> specification, CancellationToken ct = default)
 - public async Task<List<Event>> ListEventsFilteredPagedAsync(Specification<Event> specification, CancellationToken ct = default)
+- public async Task<bool> TryReserveSeatAsync(Guid eventId, CancellationToken ct = default)
 
 
 # Контекст БД
@@ -630,7 +638,7 @@ dotnet run --project project
     - EndAt - обязательное поле
     - TotalSeats - обязательное поле
     - настроена связь с сущностью Bookings 1:N
-    - AvailableSeats - IsConcurrencyToken для метода ReserveSeatsAsync() в EventService, чтобы избежать овербукинига
+    - AvailableSeats - IsConcurrencyToken 
 - конфигурация настроена в BookingConfiguration : IEntityTypeConfiguration<Booking>
     - Id - PK без генерации значения
     - хранение Status как строки в БД
@@ -643,6 +651,55 @@ dotnet run --project project
 - 404 Not Found — запрашиваемое событие с указанным id не найдено
 - 500 Internal Server Error — непредвиденные сбои на стороне сервера
 - 499 ClientClosedRequest - операция отменена пользователем
+
+
+
+
+
+# База данных и миграции (EF Core)
+
+В качестве СУБД используется PostgreSQL. Схема базы данных полностью управляется с помощью миграций Entity Framework Core (`project/Migrations`):
+
+- При запуске приложения, а также при инициализации базы данных в интеграционных тестах, схема создаётся и актуализируется автоматически через вызов `Database.Migrate()` / `Database.MigrateAsync()`. Метод `EnsureCreated()` не используется.
+- История применённых миграций отслеживается в системной таблице `__EFMigrationsHistory`.
+- Конфигурация таблиц и связей описана через Fluent API (`IEntityTypeConfiguration<T>`):
+  - Таблица `Events` — хранит мероприятия; поле `AvailableSeats` настроено как токен оптимистичной конкурентности (`ConcurrencyToken`).
+  - Таблица `Bookings` — хранит бронирования со связью `1 : N` к `Events` и правилом каскадного удаления `ON DELETE RESTRICT` (`DeleteBehavior.Restrict`), запрещающим удаление события при наличии связанных броней.
+
+## Управление миграциями вручную (EF Core CLI)
+
+- Применение миграций к базе данных:
+  - dotnet ef database update --project project
+
+### Команды для работы с миграциями EF Core
+
+- инструмент командной строки `dotnet-ef`:
+  - dotnet tool install --global dotnet-ef
+- Создание новой миграции:
+  - dotnet ef migrations add <ИмяМиграции>
+- Применение миграций к базе данных:
+  - dotnet ef database update
+- Просмотр списка миграций и их статуса
+  - dotnet ef migrations list
+- Удаление последней неприменённой миграции
+  - dotnet ef migrations remove
+
+# Интеграционные тесты
+
+Проект `EventApi.IntegrationTests` содержит интеграционные тесты для проверки работы репозиториев (`EventRepository`, `BookingRepository`) и корректности применения миграций EF Core на реальной СУБД PostgreSQL.
+
+## Требования для запуска
+- Для запуска интеграционных тестов на компьютере должен быть установлен и запущен Docker, так как тесты автоматически поднимают контейнер с базой данных с помощью библиотеки `Testcontainers.PostgreSql` (образ `postgres:16-alpine`).
+
+## Особенности реализации интеграционных тестов
+- Единый контейнер на коллекцию тестов: 
+  все тестовые классы объединены в общую коллекцию xUnit (`ICollectionFixture<PostgresContainerFixture>`) и используют один общий экземпляр контейнера PostgreSQL.
+- Применение миграций:
+  перед каждым тестом база данных очищается и схема создаётся исключительно через `Database.MigrateAsync()`. Проверяется наличие таблицы `__EFMigrationsHistory`, таблиц `Events` и `Bookings`, а также ограничения внешнего ключа `RESTRICT`.
+- Автоматическая очистка: 
+  после завершения всех тестов контейнер PostgreSQL автоматически останавливается и удаляется.
+
+
 
 
 
